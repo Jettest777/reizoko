@@ -112,7 +112,8 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--g5);outline-offs
 .rv{padding:11px 0;border-bottom:1px dashed var(--g3)}
 .rv.off{opacity:.4}
 .rv .top{display:flex;gap:8px;align-items:center;margin-bottom:8px}
-input[type=checkbox]{accent-color:var(--g7)}
+input[type=checkbox],input[type=range]{accent-color:var(--g7)}
+input[type=range]{width:100%;height:36px}
 .rv input[type=checkbox]{width:26px;height:26px;flex:none}
 .rv .g{display:grid;grid-template-columns:.9fr 1fr 1.05fr 1.6fr;gap:6px}
 .rv .g input,.rv .g select{padding:8px 6px;min-height:40px;font-size:14px}
@@ -192,8 +193,8 @@ nav button.plus .i svg{width:26px;height:26px}
 <script>
 'use strict';
 /* ========== 食材データ（一般的な保存期間の目安） ========== */
-const CATS={'野菜':'🥬','果物':'🍎','肉':'🥩','魚':'🐟','乳製品・卵':'🥛','大豆製品':'🫘','主食':'🍞','加工品':'🥓','調味料':'🧂','缶詰・乾物':'🥫','お菓子':'🍪','冷凍食品':'❄️','飲料':'🧃','その他':'📦'};
-const UNITS=['個','本','枚','袋','パック','束','玉','丁','切れ','尾','缶','箱','g','kg','ml','L'];
+const CATS={'野菜':'🥬','果物':'🍎','肉':'🥩','魚':'🐟','乳製品・卵':'🥛','大豆製品':'🫘','主食':'🍞','加工品':'🥓','調味料':'🧂','缶詰・乾物':'🥫','お菓子':'🍪','冷凍食品':'❄️','飲料':'🧃','作りおき':'🍱','その他':'📦'};
+const UNITS=['個','本','枚','袋','パック','束','玉','丁','切れ','尾','缶','箱','g','kg','ml','L','%'];
 const svg=d=>'<svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+d+'</svg>';
 const IC={food:svg('<path d="M12 7.4c-2-1.7-6.2-1-6.2 4 0 4 2.5 8.1 4.6 8.1.8 0 1-.4 1.6-.4s.8.4 1.6.4c2.1 0 4.6-4.1 4.6-8.1 0-5-4.2-5.7-6.2-4z"/><path d="M12 7.400c0-1.6.800-2.9 2.3-3.6"/>'),
  pot:svg('<path d="M5 10.500h14v4.500a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4z"/><path d="M3 10.500h18M9.5 7c0-1.1 1-1.1 1-2.200M13.5 7c0-1.1 1-1.1 1-2.2"/>'),
@@ -253,13 +254,14 @@ function lookup(name){const n=norm(name);if(!n)return null;let best=null,len=0;
   return best}
 function suggest(name){const n=norm(name);if(!n)return[];
   return FOOD_IX.filter(f=>f.keys.some(k=>k.includes(n))&&norm(f.name)!==n).slice(0,6)}
-function shelfDays(name,loc,cat){const f=lookup(name);
+const KEEP_DEF={fridge:3,freezer:21,pantry:0};
+function shelfDays(name,loc,cat,keep){if(keep&&keep[loc]!=null)return Math.max(0,+keep[loc]||0);if(cat==='作りおき')return KEEP_DEF[loc];const f=lookup(name);
   if(f)return f[loc];
   if(loc==='freezer')return cat==='冷凍食品'?90:30;
   if(loc==='pantry')return PERISH.includes(cat)?1:({'野菜':5,'果物':5,'主食':30,'調味料':180,'缶詰・乾物':365,'お菓子':60,'飲料':180}[cat]||30);
   return {'肉':2,'魚':2,'野菜':7,'果物':7,'乳製品・卵':7,'大豆製品':5,'主食':4,'加工品':7,'調味料':90,'缶詰・乾物':90,'お菓子':30,'飲料':14}[cat]||7}
-function roomOk(name,cat){const f=lookup(name);return f?f.roomOk:!PERISH.includes(cat)}
-const emo=it=>{const f=lookup(it.name);return (f&&EMO[f.name])||CATS[it.cat]||'📦'};
+function roomOk(name,cat,keep){if(cat==='作りおき')return shelfDays(name,'pantry',cat,keep)>0;const f=lookup(name);return f?f.roomOk:!PERISH.includes(cat)}
+const emo=it=>{if(it.cat==='作りおき')return'🍱';const f=lookup(it.name);return (f&&EMO[f.name])||CATS[it.cat]||'📦'};
 
 /* ========== 日付 ========== */
 const pad=n=>String(n).padStart(2,'0');
@@ -279,7 +281,7 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('
 const uid=()=>Math.random().toString(36).slice(2,8);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fq=n=>String(Math.round(n*100)/100);
-const stepOf=u=>u==='g'||u==='ml'?50:(u==='kg'||u==='L'?0.1:0.5);
+const stepOf=u=>u==='%'?10:u==='g'||u==='ml'?50:(u==='kg'||u==='L'?0.1:0.5);
 function status(it){const d=daysLeft(it.exp);
   if(d<0)return{k:'bad',t:'期限切れ',d};if(d===0)return{k:'bad',t:'今日まで',d};
   const t=d>60?'あと'+Math.round(d/30)+'か月':'あと'+d+'日';
@@ -339,14 +341,14 @@ function autoFill(force){ // 名前やしまう場所から目安を入れる
     if(f&&!form.catTouched){form.cat=f.cat;if(!form.unitTouched)form.unit=f.unit}
     if(!form.locTouched)form.loc=(f&&f.home)||'fridge';
   }
-  if(!form.touched||force){form.exp=addDays(form.bought||today(),shelfDays(form.name,form.loc,form.cat));form.est=true;form.touched=false;form.note=''}
+  if(!form.touched||force){form.exp=addDays(form.bought||today(),shelfDays(form.name,form.loc,form.cat,form.keep));form.est=true;form.touched=false;form.note=''}
   const g=id=>document.getElementById(id);if(!g('fExp'))return;
   g('fExp').value=form.exp;g('fCat').value=form.cat;g('fUnit').value=form.unit;g('fLocs').innerHTML=locBtns(form.loc);
   g('fSaveBtn').textContent=form.id?'保存する':LOC[form.loc].room+'に入れる';
-  const days=shelfDays(form.name,form.loc,form.cat),lt=LOC[form.loc].t;
+  const days=shelfDays(form.name,form.loc,form.cat,form.keep),lt=LOC[form.loc].t;
   let h=form.note?esc(form.note):form.touched?`自分で設定した期限です。<a href="#" data-act="fReset">目安（${lt}で約${days}日）に戻す</a>`
-    :`目安: ${f?esc(f.name)+'は':''}${lt}で約${days}日。パッケージに期限があれば書き換えてください。`;
-  if(form.loc==='pantry'&&form.name&&!roomOk(form.name,form.cat))h='<b style="color:var(--acc)">この食材は常温保存に向きません。</b>'+h;
+    :`目安: ${f&&form.cat!=='作りおき'?esc(f.name)+'は':''}${lt}で約${days}日。パッケージに期限があれば書き換えてください。`;
+  if(form.loc==='pantry'&&form.name&&!roomOk(form.name,form.cat,form.keep))h='<b style="color:var(--acc)">この食材は常温保存に向きません。</b>'+h;
   g('fHint').innerHTML=h;
   g('fSug').innerHTML=suggest(form.name).map(s=>`<button class="chip" data-act="fPick" data-n="${esc(s.name)}">${EMO[s.name]||CATS[s.cat]} ${esc(s.name)}</button>`).join('')}
 function vAdd(){
@@ -400,7 +402,7 @@ function dishCard(d,i){
     return `<span class="${hot?'hot':''}">${esc(u.name)} ${u.qty?fq(u.qty):''}${esc(u.unit||'')}</span>`}).join('');
   return `<div class="dish"><h3>${esc(d.name)}${d.minutes?`<span class="min">約${esc(d.minutes)}分</span>`:''}</h3>
   <p>${esc(d.desc||'')}</p><div class="uses">${uses}</div>${(d.others||[]).length?`<p>そのほか: ${esc(d.others.join('、'))}</p>`:''}
-  <details><summary>作り方を見る</summary><ol>${(d.steps||[]).map(s=>`<li>${esc(s)}</li>`).join('')}</ol></details>
+  <details><summary>作り方を見る</summary><ol>${(d.steps||[]).map(s=>`<li>${esc(s)}</li>`).join('')}</ol>${d.keep?`<p>残ったときの目安: ${keepText(d.keep)}</p>`:''}</details>
   <div class="row" style="margin-top:8px"><button class="btn" data-act="cooked" data-i="${i}">作った</button>
   <a class="btn line" target="_blank" rel="noopener" href="${cookpad(d.search||d.name)}">クックパッド</a></div></div>`}
 
@@ -410,7 +412,7 @@ function vLog(){
   for(const r of list){
     if(r.date!==cur){cur=r.date;const d=parse(r.date);out+=`<div class="day">${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${WD[d.getDay()]}）</div>`}
     out+=`<div class="rec">${r.role?`<span class="stamp">${esc(r.role)}</span>`:''}<h3>${esc(r.name)}</h3>${r.desc?`<p>${esc(r.desc)}</p>`:''}
-    ${r.uses.length?`<div class="uses">${r.uses.map(u=>`<span>${esc(u)}</span>`).join('')}</div>`:''}
+    ${r.uses.length?`<div class="uses">${r.uses.map(u=>`<span>${esc(u)}</span>`).join('')}</div>`:''}${r.left?`<p>残り: ${esc(r.left)}</p>`:''}
     ${r.steps.length?`<details><summary>作り方を見る</summary>${r.others.length?`<p>そのほか: ${esc(r.others.join('、'))}</p>`:''}<ol>${r.steps.map(s=>`<li>${esc(s)}</li>`).join('')}</ol></details>`:''}
     <label class="f" style="margin-top:10px">感想</label><textarea rows="3" maxlength="140" data-note="${r.id}" placeholder="味、家族の反応、次に変えたいところなど">${esc(r.note||'')}</textarea><div class="cnt140">${(r.note||'').length} / 140</div>
     <div class="acts"><a target="_blank" rel="noopener" href="${cookpad(r.search||r.name)}">クックパッドで探す</a><button data-act="logDel" data-id="${r.id}">削除</button></div></div>`}
@@ -436,7 +438,7 @@ function vSettings(){const s=S.settings;
   <h2>ホーム画面に追加（iPhone）</h2><div class="card"><ol class="steps-guide" style="margin:0"><li>Safari でこのページを開く</li><li>共有ボタン（□に↑）→「ホーム画面に追加」</li><li>以後はホーム画面のアイコンから開く</li></ol></div>`}
 
 /* ========== 操作 ========== */
-function itemSheet(it){const st=stepOf(it.unit),def=Math.min(it.qty,it.unit==='g'||it.unit==='ml'?st*2:1),s=status(it);
+function itemSheet(it){const st=stepOf(it.unit),def=it.unit==='%'?it.qty:Math.min(it.qty,it.unit==='g'||it.unit==='ml'?st*2:1),s=status(it);
   openSheet(`<div class="big">${emo(it)}</div><h3 style="text-align:center">${esc(it.name)}</h3>
   <p style="text-align:center;margin:4px 0 0;font-size:14px">${LOC[it.loc].e} ${LOC[it.loc].room}・残り ${fq(it.qty)}${esc(it.unit)}・期限 ${md(it.exp)}${it.est?'頃':''} <span class="badge ${s.k}">${s.t}</span></p>
   <label class="f">使った量</label><div class="row"><button class="step" data-act="uQty" data-d="-1" aria-label="減らす">−</button><input type="number" id="uQty" inputmode="decimal" step="any" min="0" value="${fq(def)}" data-step="${st}" data-max="${it.qty}"><button class="step" data-act="uQty" data-d="1" aria-label="増やす">＋</button><span style="flex:none;min-width:44px;white-space:nowrap;font-weight:800">${esc(it.unit)}</span></div>
@@ -447,17 +449,27 @@ function consume(id,amount){const it=S.items.find(i=>i.id===id);if(!it)return;
   if(amount==null||amount>=it.qty-1e-9)S.items=S.items.filter(i=>i.id!==id);else it.qty=Math.round((it.qty-amount)*100)/100}
 function editSheet(it){form=newForm(it);
   openSheet(`<h3>食材を直す</h3>${formHtml(form)}<div style="height:8px"></div><button class="btn danger" data-act="del" data-id="${it.id}">在庫から削除</button>`);autoFill()}
-let cookIdx=-1;
+let cookIdx=-1,left=null;
+const keepOf=d=>({...KEEP_DEF,...((d&&d.keep)||{})});
+const keepLabel=n=>n>=60?'約'+Math.round(n/30)+'か月':n>=14?'約'+Math.round(n/7)+'週間':n+'日';
+const keepText=k=>LOCS.filter(l=>l!=='pantry').concat('pantry').map(l=>{const n=Math.max(0,+keepOf({keep:k})[l]||0);return LOC[l].t+(n>0?' '+keepLabel(n):' 不向き')}).join('・');
+function leftHtml(){const d=S.menu.dishes[cookIdx],n=shelfDays(d.name,left.loc,'作りおき',keepOf(d));
+  return `<label class="f">残った量（目分量）</label><div class="row"><input type="range" id="lfPct" min="10" max="100" step="10" value="${left.pct}"><b id="lfOut" style="flex:none;width:56px;text-align:right;font-size:18px">${left.pct}%</b></div>
+  <label class="f">保存する場所</label><div class="locs">${LOCS.map(v=>`<button data-act="lfLoc" data-v="${v}" class="${left.loc===v?'on':''}"><span class="e">${LOC[v].e}</span>${LOC[v].t}</button>`).join('')}</div>
+  <p class="hint" style="font-size:13px">${n>0?`食べ切る目安: <b>${LOC[left.loc].t}で${keepLabel(n)}以内</b>（${md(addDays(today(),n))}まで）。この料理の内容からAIが判断した目安です。`:`<b style="color:var(--acc)">この料理は${LOC[left.loc].t}保存に向きません。</b>別の場所を選んでください。`}</p>
+  <button class="btn sub" data-act="lfOff" style="margin-top:10px">残さなかった（取り消す）</button>`}
 function ckRow(it,q){const all=q>=it.qty;
   return `<div class="rv" data-id="${it.id}"><div class="top"><input type="checkbox" checked data-ck="on" aria-label="在庫から引く"><b style="flex:1">${emo(it)} ${esc(it.name)}</b><span class="hint" style="margin:0">${LOC[it.loc].t}・残り${fq(it.qty)}${esc(it.unit)}</span></div>
   <div class="row"><input type="number" inputmode="decimal" step="any" data-ck="qty" value="${fq(q)}" ${all?'disabled':''}><span style="flex:none;min-width:44px;white-space:nowrap">${esc(it.unit)}</span><label style="flex:1.4;font-size:14px"><input type="checkbox" data-ck="all" ${all?'checked':''} style="width:20px;height:20px;vertical-align:-4px"> 使い切った</label></div></div>`}
-function cookedSheet(i){cookIdx=i;const d=S.menu.dishes[i],seen=new Set();let rows='';
+function cookedSheet(i){cookIdx=i;left=null;const d=S.menu.dishes[i],seen=new Set();let rows='';
   for(const u of d.uses||[]){const it=findInv(u);if(!it||seen.has(it.id))continue;seen.add(it.id);rows+=ckRow(it,Math.min(it.qty,u.qty>0?u.qty:it.qty))}
   const rest=sorted().filter(x=>!seen.has(x.id));
   openSheet(`<h3>「${esc(d.name)}」で使った食材</h3><p class="hint" style="margin-bottom:6px">在庫から差し引き、「記録」に残します。量は直せます。使っていないものはチェックを外してください。</p>
   <div id="ckRows">${rows}</div>${rows?'':'<p class="hint" id="ckNone">レシピの食材で在庫に登録済みのものは見つかりませんでした。下のボタンから追加できます。</p>'}
   ${rest.length?`<div style="height:12px"></div><button class="btn line" data-act="ckMore">＋ ほかに使った食材を追加</button>
   <div id="ckPick" hidden><p class="hint" style="margin:12px 2px 0">使った食材をタップしてください。</p><div class="chips">${rest.map(x=>`<button class="chip" data-act="ckAdd" data-id="${x.id}">${emo(x)} ${esc(x.name)}</button>`).join('')}</div></div>`:''}
+  <div style="height:18px;border-bottom:1px solid var(--g3);margin-bottom:14px"></div>
+  <div id="lfBox"><button class="btn line" data-act="lfOn">残した（作った料理を保存する）</button></div>
   <div style="height:14px"></div><button class="btn" data-act="ckSave">在庫から引いて記録する</button>`)}
 
 /* ========== Gemini ========== */
@@ -483,7 +495,7 @@ async function readReceipt(file){
   busy=true;render();
   try{const data=await shrink(file);
     const out=await gemini([{text:`これは日本のスーパー等のレシート画像です。食品・飲料だけを抽出し、次の形のJSONだけを返してください。
-{"items":[{"name":"一般的な食材名(例: 鶏もも肉、キャベツ。ブランド名・産地・略号・容量表記は除く)","qty":数値,"unit":"${UNITS.join('|')} のどれか","category":"${Object.keys(CATS).join('|')} のどれか","loc":"fridge|freezer|pantry","days":その保存場所での購入日からの一般的な日持ち日数(整数)}]}
+{"items":[{"name":"一般的な食材名(例: 鶏もも肉、キャベツ。ブランド名・産地・略号・容量表記は除く)","qty":数値,"unit":"${UNITS.filter(u=>u!=='%').join('|')} のどれか","category":"${Object.keys(CATS).filter(c=>c!=='作りおき').join('|')} のどれか","loc":"fridge|freezer|pantry","days":その保存場所での購入日からの一般的な日持ち日数(整数)}]}
 ルール: 日用品・レジ袋・値引き行・小計・合計・ポイントは除外。同じ商品は数量をまとめる。重さが分かる肉や魚は unit を g にしてもよい。loc は家庭での普通の保存場所で、fridge=冷蔵、freezer=冷凍、pantry=常温(米、缶詰、乾物、菓子、未開封の調味料や飲料など)。読み取れない行は推測せず除外。`},
       {inline_data:{mime_type:'image/jpeg',data}}],0.1);
     const list=(out.items||out||[]);if(!Array.isArray(list)||!list.length)throw new Error('食品が見つかりませんでした。明るい場所で撮り直してみてください');
@@ -498,16 +510,18 @@ async function genMenu(silent){
   const items=sorted().filter(i=>daysLeft(i.exp)>=-1);if(!items.length||busy)return;
   busy=true;menuErr='';if(!silent||view==='menu')render();
   const prev=S.menu&&S.menu.dishes?S.menu.dishes.map(d=>d.name):[];
-  try{const inv=items.map(i=>({id:i.id,name:i.name,qty:i.qty,unit:i.unit,place:LOC[i.loc].t,days_left:daysLeft(i.exp)}));
+  try{const inv=items.map(i=>({id:i.id,name:i.name,qty:i.qty,unit:i.unit,place:LOC[i.loc].t,days_left:daysLeft(i.exp),...(i.cat==='作りおき'?{kind:'作りおき料理(残り'+i.qty+'%)'}:{})}));
     const out=await gemini([{text:`あなたは家庭料理の献立アドバイザーです。下の在庫から今日の献立(主菜・主食・副菜・汁物を各1品、計4品)を${S.settings.people}人分で考えてください。
 - 主食はご飯・パン・麺類など。在庫になければ常備の米で白ごはんや混ぜご飯にしてよい。丼・パスタ・うどんのように主菜と主食を兼ねる料理は role を主菜にし、主食は省いてよい。
 - uses には、その料理で使う在庫の食材をすべて漏れなく入れる。id は在庫の id をそのまま写す。
+- kind が「作りおき料理」のものは調理済みの残り。温め直してそのまま一品にするか、アレンジして使う（uses の qty は使う割合の数値、unit は %）。
+- keep は、その料理が残った場合に食べ切るべき日数の目安（保存方法ごと）。料理の内容から判断し、食品安全を優先して控えめにする。その保存方法に向かない場合は 0。
 - days_left が小さい食材(特に ${S.settings.remindDays} 以下)を最優先で使い切る。期限まで余裕のある冷凍品・常温品は急がない。
 - 塩・砂糖・醤油・味噌・酒・みりん・酢・油・だし・こしょう・片栗粉・小麦粉・米は常備していると仮定してよい。それ以外で在庫にないものはできるだけ使わない。
 - 家庭で無理なく作れる手順(各6ステップ以内)。肉・魚は中心まで十分に加熱する。
 ${S.wish?'- 希望: '+S.wish+'\n':''}${prev.length?'- 前回の提案('+prev.join('、')+')とは別の料理にする。\n':''}
 次の形のJSONだけを返す:
-{"comment":"献立のひとこと(20字以内)","dishes":[{"role":"主菜|主食|副菜|汁物","name":"料理名","desc":"一文の説明","minutes":調理分数,"uses":[{"id":"在庫のid","name":"食材名","qty":使う量(在庫と同じ単位の数値),"unit":"単位"}],"others":["在庫以外に使う材料と分量"],"steps":["手順"],"search":"クックパッド検索用に主な食材を2つ、空白区切り"}]}
+{"comment":"献立のひとこと(20字以内)","dishes":[{"role":"主菜|主食|副菜|汁物","name":"料理名","desc":"一文の説明","minutes":調理分数,"uses":[{"id":"在庫のid","name":"食材名","qty":使う量(在庫と同じ単位の数値),"unit":"単位"}],"others":["在庫以外に使う材料と分量"],"steps":["手順"],"keep":{"fridge":冷蔵での日数,"freezer":冷凍での日数,"pantry":常温での日数},"search":"クックパッド検索用に主な食材を2つ、空白区切り"}]}
 在庫: ${JSON.stringify(inv)}`}],0.8);
     if(!out.dishes||!out.dishes.length)throw new Error('献立を作れませんでした。もう一度お試しください');
     S.menu={date:today(),comment:out.comment||'',dishes:out.dishes};save();
@@ -550,7 +564,7 @@ document.addEventListener('click',async e=>{
   case'del':snap();consume(id);save();closeSheet();form=null;render();toast(it.name+' を削除しました',true);break;
   case'fLoc':{syncForm();const from=form.loc,to=b.dataset.v;form.loc=to;form.locTouched=true;
     if(form.id&&from!==to){ // 入れ替え時の期限の扱い
-      if(to==='freezer'){form.exp=addDays(today(),shelfDays(form.name,'freezer',form.cat));form.note='冷凍するので、期限を今日から約'+shelfDays(form.name,'freezer',form.cat)+'日後に延ばしました。'}
+      if(to==='freezer'){form.exp=addDays(today(),shelfDays(form.name,'freezer',form.cat,form.keep));form.note='冷凍するので、期限を今日から約'+shelfDays(form.name,'freezer',form.cat,form.keep)+'日後に延ばしました。'}
       else if(from==='freezer'){form.exp=addDays(today(),2);form.note='解凍したものは早めに。期限を2日後にしました。'}
       else form.note=''}
     autoFill();break}
@@ -558,7 +572,7 @@ document.addEventListener('click',async e=>{
   case'fPick':syncForm();form.name=b.dataset.n;document.getElementById('fName').value=form.name;autoFill();break;
   case'fReset':syncForm();autoFill(true);break;
   case'fSave':{syncForm();if(!form.name){toast('食材名を入れてください');break}if(!(form.qty>0)){toast('数量を入れてください');break}
-    const rec={id:form.id||uid(),name:form.name,cat:form.cat,loc:form.loc,qty:form.qty,unit:form.unit,bought:form.bought,exp:form.exp,est:!form.touched||!!form.note};
+    const rec={id:form.id||uid(),name:form.name,cat:form.cat,loc:form.loc,qty:form.qty,unit:form.unit,bought:form.bought,exp:form.exp,est:!form.touched||!!form.note};if(form.keep)rec.keep=form.keep;
     if(form.id){const i=S.items.findIndex(x=>x.id===form.id);if(i>=0)S.items[i]=rec;closeSheet()}else S.items.push(rec);
     S.fold[rec.loc]=false;save();const wasNew=!form.id;form=null;render();toast(rec.name+(wasNew?' を'+LOC[rec.loc].room+'に入れました':' を保存しました'));break}
   case'receipt':if(!S.settings.apiKey){toast('先に設定で Gemini APIキーを登録してください');break}document.getElementById('receiptFile').click();break;
@@ -568,15 +582,21 @@ document.addEventListener('click',async e=>{
   case'people':S.settings.people=+b.dataset.v;save();keepWish();render();break;
   case'genMenu':keepWish();genMenu(false);break;
   case'cooked':cookedSheet(+b.dataset.i);break;
+  case'lfOn':left={pct:50,loc:'fridge'};document.getElementById('lfBox').innerHTML=leftHtml();break;
+  case'lfOff':left=null;document.getElementById('lfBox').innerHTML='<button class="btn line" data-act="lfOn">残した（作った料理を保存する）</button>';break;
+  case'lfLoc':left.loc=b.dataset.v;document.getElementById('lfBox').innerHTML=leftHtml();break;
   case'ckMore':document.getElementById('ckPick').hidden=false;b.hidden=true;break;
   case'ckAdd':{if(!it)break;const st=stepOf(it.unit);document.getElementById('ckRows').insertAdjacentHTML('beforeend',ckRow(it,Math.min(it.qty,it.unit==='g'||it.unit==='ml'?st*2:1)));
     b.remove();const nn=document.getElementById('ckNone');if(nn)nn.remove();break}
-  case'ckSave':{snap();let n=0;const used=[];document.querySelectorAll('#sheet .rv').forEach(r=>{if(!r.querySelector('[data-ck=on]').checked)return;
+  case'ckSave':{if(left&&!(shelfDays('',left.loc,'作りおき',keepOf(S.menu.dishes[cookIdx]))>0)){toast('この料理は'+LOC[left.loc].t+'保存に向きません。保存場所を選び直してください');break}
+    snap();let n=0;const used=[];document.querySelectorAll('#sheet .rv').forEach(r=>{if(!r.querySelector('[data-ck=on]').checked)return;
       const x=S.items.find(y=>y.id===r.dataset.id);if(!x)return;
       const all=r.querySelector('[data-ck=all]').checked,q=parseFloat(r.querySelector('[data-ck=qty]').value),amt=all?x.qty:Math.min(x.qty,q>0?q:0);
       if(!(amt>0))return;used.push(x.name+' '+fq(amt)+x.unit);consume(x.id,all?null:amt);n++});
-    const d=S.menu&&S.menu.dishes[cookIdx];if(d)S.log.unshift({id:uid(),date:today(),name:d.name,role:d.role||'',desc:d.desc||'',uses:used.length?used:(d.uses||[]).map(u=>u.name+(u.qty?' '+fq(u.qty)+(u.unit||''):'')),others:d.others||[],steps:d.steps||[],search:d.search||d.name,note:''});
-    save();closeSheet();render();toast('記録しました（在庫から '+n+' 品）',true);break}
+    const d=S.menu&&S.menu.dishes[cookIdx];if(d)S.log.unshift({id:uid(),date:today(),name:d.name,role:d.role||'',desc:d.desc||'',uses:used.length?used:(d.uses||[]).map(u=>u.name+(u.qty?' '+fq(u.qty)+(u.unit||''):'')),others:d.others||[],steps:d.steps||[],search:d.search||d.name,note:'',left:left?left.pct+'%を'+LOC[left.loc].t+'保存':''});
+    if(d&&left){const k=keepOf(d);S.items.push({id:uid(),name:d.name,cat:'作りおき',loc:left.loc,qty:left.pct,unit:'%',bought:today(),exp:addDays(today(),shelfDays(d.name,left.loc,'作りおき',k)),est:true,keep:k});S.fold[left.loc]=false}
+    const msg=left?'記録して、残りを'+LOC[left.loc].room+'に入れました':'記録しました（在庫から '+n+' 品）';left=null;
+    save();closeSheet();render();toast(msg,true);break}
   case'ics':{const r=buildIcs();if(!r.count){toast('登録できる食材がありません');break}await giveFile('shokuzai-reminder.ics',r.text,'text/calendar');break}
   case'testKey':readSettings();b.disabled=true;b.textContent='確認中…';try{await gemini([{text:'{"ok":true} というJSONだけを返してください'}],0);toast('接続できました')}catch(er){toast(er.message)}render();break;
   case'export':{const copy={...S,settings:{...S.settings,apiKey:''}};await giveFile('perorincho-backup-'+today()+'.json',JSON.stringify(copy,null,1),'application/json');break}
@@ -593,7 +613,8 @@ function keepWish(){const w=document.getElementById('wish');if(w)S.wish=w.value.
 function readSettings(){const g=id=>document.getElementById(id);if(!g('sKey'))return;const s=S.settings;
   s.apiKey=g('sKey').value.trim();s.model=g('sModel').value.trim()||DEF.settings.model;s.autoMenu=g('sAuto').checked;s.remindDays=+g('sDays').value;s.remindHour=+g('sHour').value;save()}
 document.addEventListener('input',e=>{const t=e.target;
-  if(t.id==='fName'){form.name=t.value.trim();autoFill()}
+  if(t.id==='lfPct'){left.pct=+t.value;document.getElementById('lfOut').textContent=left.pct+'%'}
+  else if(t.id==='fName'){form.name=t.value.trim();autoFill()}
   else if(t.id==='fExp'){form.exp=t.value;form.touched=true;form.est=false;form.note='';syncForm();autoFill()}
   else if(t.id==='fCat'){form.catTouched=true;syncForm();autoFill()}
   else if(t.id==='fUnit'){form.unitTouched=true;syncForm()}
