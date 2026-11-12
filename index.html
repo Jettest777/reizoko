@@ -149,7 +149,35 @@ details summary{font-weight:600;font-size:14.5px;padding:8px 0;cursor:pointer;co
 .alert{border-radius:12px;padding:12px 14px;font-weight:600;font-size:14.5px;background:var(--acc-bg);color:var(--acc)}
 .day{display:flex;align-items:center;gap:10px;font:600 14px var(--mincho);letter-spacing:.14em;color:var(--g8);margin:24px 2px 10px}
 .day::after{content:"";flex:1;height:1px;background:var(--g3)}
-.rec{background:#fff;border:1px solid var(--line);border-left:4px solid var(--g7);border-radius:4px 12px 12px 4px;padding:14px 14px 12px;margin-bottom:10px;box-shadow:0 6px 14px rgba(18,48,31,.07)}
+.done{flex:1;text-align:center;font-weight:600;color:var(--g7);background:var(--g1);border-radius:12px;padding:14px;letter-spacing:.08em}
+.cal2{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 10px 10px}
+.cal2 .hdr{display:flex;align-items:center;justify-content:space-between;font:600 16px var(--mincho);letter-spacing:.12em;margin-bottom:4px}
+.cal2 .hdr button{width:44px;height:40px;font-size:22px;color:var(--g7)}
+.cal2 .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center}
+.cal2 .wd{font-size:11px;color:var(--sub);padding:2px 0}
+.cd{height:42px;border-radius:10px;font-size:14px;position:relative;color:var(--g4)}
+.cd:disabled{cursor:default}
+.cd.has{color:var(--g9);font-weight:600;background:var(--g1)}
+.cd.has i{position:absolute;bottom:5px;left:50%;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--g7)}
+.cd.today{box-shadow:inset 0 0 0 1.5px var(--g5)}
+.cd.sel{background:var(--g7);color:#fff}.cd.sel i{background:#fff}
+.daycard{background:#fff;border:1px solid var(--line);border-radius:12px;padding:2px 14px 6px;margin-top:12px;scroll-margin-top:12px}
+.daycard.sel{border-color:var(--g7);box-shadow:0 0 0 3px var(--g2)}
+.daycard .day{margin:12px 0 8px}
+.mealrow{display:flex;gap:10px;padding:6px 0;border-top:1px dotted var(--g3)}
+.mealrow .ml{flex:none;width:30px;height:30px;border-radius:50%;background:var(--g7);color:#fff;font:600 14px var(--mincho);display:grid;place-items:center;margin-top:6px}
+.mlist{flex:1;min-width:0}
+details.rec>summary{display:flex;align-items:center;gap:8px;color:var(--ink);font-size:15px;letter-spacing:0;padding:9px 0;list-style:none}
+details.rec>summary::-webkit-details-marker{display:none}
+details.rec>summary b{flex:1;min-width:0;font-weight:600}
+details.rec>summary::after{content:"›";color:var(--g5);font-size:18px;transition:transform .15s}
+details.rec[open]>summary::after{transform:rotate(90deg)}
+details.rec+details.rec{border-top:1px dotted var(--g2)}
+.stamp{white-space:nowrap}
+.hasnote{font-size:10.5px;color:var(--g7);border:1px solid var(--g3);border-radius:3px;padding:0 5px;white-space:nowrap}
+.recbody{padding:0 0 12px}
+.leftrow{display:flex;align-items:center;gap:10px;font-size:14px;margin:10px 0 4px;padding:8px 10px;background:var(--g0);border-radius:8px}
+.leftrow button{margin-left:auto;color:var(--g7);font-weight:600;text-decoration:underline;font-size:13px}
 .rec .cnt140{text-align:right;font-size:11px;color:var(--sub);margin-top:3px}
 .rec .acts{display:flex;gap:16px;justify-content:flex-end;margin-top:6px;font-size:13px;font-weight:600}
 .rec .acts button{color:var(--sub);text-decoration:underline}
@@ -287,8 +315,8 @@ function status(it){const d=daysLeft(it.exp);
   const t=d>60?'あと'+Math.round(d/30)+'か月':'あと'+d+'日';
   return{k:d<=S.settings.remindDays?'warn':'ok',t,d}}
 const sorted=()=>[...S.items].sort((a,b)=>a.exp<b.exp?-1:a.exp>b.exp?1:0);
-function snap(){undoSnap=JSON.stringify({i:S.items,l:S.log})}
-function undo(){if(undoSnap){const u=JSON.parse(undoSnap);S.items=u.i;S.log=u.l;undoSnap=null;save();render();toast('元に戻しました')}}
+function snap(){undoSnap=JSON.stringify({i:S.items,l:S.log,m:S.menus||null})}
+function undo(){if(undoSnap){const u=JSON.parse(undoSnap);S.items=u.i;S.log=u.l;S.menus=u.m;undoSnap=null;save();render();toast('元に戻しました')}}
 
 /* ========== トースト / シート ========== */
 let toastT;
@@ -371,6 +399,11 @@ function vReview(){
   <div style="height:8px"></div><button class="btn sub" data-act="rvCancel">やめる</button>`}
 
 const ROLE={'主菜':'🍳','主食':'🍚','副菜':'🥗','汁物':'🥣'};const ROLES=['主菜','主食','副菜','汁物'];
+const MEALS=['am','noon','pm'],MEAL={am:{t:'朝ごはん',s:'朝'},noon:{t:'昼ごはん',s:'昼'},pm:{t:'夜ごはん',s:'夜'}};
+const mealNow=()=>{const h=new Date().getHours();return h<10?'am':h<15?'noon':'pm'};
+let meal=mealNow();
+function menus(){if(!S.menus||S.menus.date!==today()){const old=S.menu&&S.menu.date===today()?S.menu:null;S.menus={date:today()};if(old)S.menus.pm={comment:old.comment||'',dishes:old.dishes||[]}}delete S.menu;return S.menus}
+const curMenu=()=>menus()[meal];
 function findInv(u){if(!u)return null;let it=S.items.find(x=>x.id===u.id);if(it)return it;const n=norm(u.name);if(!n)return null;
   const c=lookup(u.name);return S.items.find(x=>norm(x.name)===n)||(c&&S.items.find(x=>{const k=lookup(x.name);return k&&k.name===c.name}))||S.items.find(x=>{const m=norm(x.name);return m.includes(n)||n.includes(m)})||null}
 function dishGroups(m){const idx=m.dishes.map((d,i)=>({d,i,r:ROLES.includes(d.role)?d.role:'副菜'}));
@@ -379,45 +412,66 @@ const cookpad=q=>'https://cookpad.com/jp/search/'+encodeURIComponent(q);
 function vMenu(){
   const items=sorted(),hot=items.filter(i=>{const k=status(i);return k.k!=='ok'&&k.d>=-1}).slice(0,3);
   const base=(hot.length?hot:items.slice(0,2)).map(i=>(lookup(i.name)||i).name);
-  const m=S.menu;let body='';
-  if(busy)body='<div class="oshina"><div class="pot"><span class="s">〜〜〜</span><span class="p">🍲</span><div>献立を考えています…</div></div></div>';
-  else if(!items.length)body='<div class="oshina"><div class="pot"><span class="p">🍽️</span><div>食材を入れると、期限の近いものから<br>献立を考えます。</div></div></div>';
+  const m=curMenu(),has=m&&m.dishes&&m.dishes.length,key=S.settings.apiKey;let body='';
+  if(busy)body='<div class="oshina"><div class="pot"><span class="s">〜〜〜</span><span class="p">🍲</span><div>'+MEAL[meal].t+'の献立を考えています…</div></div></div>';
   else{
     if(menuErr)body+=`<div class="alert">${esc(menuErr)}</div><div style="height:10px"></div>`;
-    if(m&&m.dishes&&m.dishes.length){
-      body+=`<div class="oshina"><div class="ttl">本日の献立</div><div class="dt">${md(m.date)}・${S.settings.people}人分</div>${m.comment?`<div class="cm">〜 ${esc(m.comment)} 〜</div>`:''}
-        ${dishGroups(m)}</div><div style="height:14px"></div><button class="btn sub" data-act="genMenu">別の献立を考えてもらう</button>`;
-    }else if(S.settings.apiKey){
-      body+=`<div class="oshina"><div class="ttl">本日の献立</div><div class="pot"><span class="p">🍽️</span><div style="margin-bottom:14px">期限が近い食材を優先して、<br>今日の献立とレシピを作ります。</div><button class="btn" data-act="genMenu">献立を作ってもらう</button></div></div>`;
-    }else{
-      body+=`<div class="oshina"><div class="pot"><span class="p">🍽️</span><div style="margin-bottom:14px">AIに献立を作ってもらうには、<br>無料の Gemini APIキーを設定してください。</div><button class="btn" data-nav="settings">設定を開く</button></div></div>`;
-    }
-    body+=`<div style="height:14px"></div><a class="btn line" target="_blank" rel="noopener" href="${cookpad(base.join(' '))}">クックパッドで「${esc(base.join('・'))}」を探す</a>`;
+    if(has)body+=`<div class="oshina"><div class="ttl">本日の献立</div><div class="dt">${md(today())}・${MEAL[meal].t}・${S.settings.people}人分</div>${m.comment?`<div class="cm">〜 ${esc(m.comment)} 〜</div>`:''}${dishGroups(m)}</div>`;
+    else body+=`<div class="oshina"><div class="ttl">本日の献立</div><div class="dt">${md(today())}・${MEAL[meal].t}</div><div class="pot"><span class="p">🍽️</span><div style="margin-bottom:14px">${!items.length?'食材を入れると、期限の近いものから<br>献立を考えます。':key?'期限が近い食材を優先して、<br>'+MEAL[meal].t+'に合う献立とレシピを作ります。':'AIに献立を作ってもらうには、<br>無料の Gemini APIキーを設定してください。'}</div>${!items.length?'':key?'<button class="btn" data-act="genMenu">献立を作ってもらう</button>':'<button class="btn" data-nav="settings">設定を開く</button>'}</div></div>`;
+    body+=`<div style="height:14px"></div>${has&&key&&items.length?'<button class="btn sub" data-act="genMenu">別の献立を考えてもらう</button><div style="height:8px"></div>':''}
+    <button class="btn line" data-act="ownDish">＋ 自分で作ったメニューを追加</button>
+    ${items.length?`<div style="height:8px"></div><a class="btn line" target="_blank" rel="noopener" href="${cookpad(base.join(' '))}">クックパッドで「${esc(base.join('・'))}」を探す</a>`:''}`;
   }
-  return `<div class="card" style="margin-bottom:14px"><div class="row"><span style="flex:none;font-weight:600;font-size:14px;letter-spacing:.08em">人数</span>
+  return `<div class="card" style="margin-bottom:14px"><div class="seg">${MEALS.map(k=>`<button data-act="meal" data-v="${k}" class="${meal===k?'on':''}">${MEAL[k].t}</button>`).join('')}</div>
+  <div class="row" style="margin-top:10px"><span style="flex:none;font-weight:600;font-size:14px;letter-spacing:.08em">人数</span>
   <div class="seg" style="flex:1">${[1,2,3,4].map(n=>`<button data-act="people" data-v="${n}" class="${S.settings.people===n?'on':''}">${n}人</button>`).join('')}</div></div>
   <input type="text" id="wish" style="margin-top:10px" placeholder="リクエスト（例: 15分で、和食、子ども向け）" value="${esc(S.wish||'')}"></div>${body}`}
 function dishCard(d,i){
   const uses=(d.uses||[]).map(u=>{const it=findInv(u);const hot=it&&status(it).k!=='ok';
     return `<span class="${hot?'hot':''}">${esc(u.name)} ${u.qty?fq(u.qty):''}${esc(u.unit||'')}</span>`}).join('');
-  return `<div class="dish"><h3>${esc(d.name)}${d.minutes?`<span class="min">約${esc(d.minutes)}分</span>`:''}</h3>
-  <p>${esc(d.desc||'')}</p><div class="uses">${uses}</div>${(d.others||[]).length?`<p>そのほか: ${esc(d.others.join('、'))}</p>`:''}
-  <details><summary>作り方を見る</summary><ol>${(d.steps||[]).map(s=>`<li>${esc(s)}</li>`).join('')}</ol>${d.keep?`<p>残ったときの目安: ${keepText(d.keep)}</p>`:''}</details>
-  <div class="row" style="margin-top:8px"><button class="btn" data-act="cooked" data-i="${i}">作った</button>
+  return `<div class="dish"><h3>${esc(d.name)}${d.minutes?`<span class="min">約${esc(d.minutes)}分</span>`:''}${d.custom?'<span class="min">自分のメニュー</span>':''}</h3>
+  ${d.desc?`<p>${esc(d.desc)}</p>`:''}${uses?`<div class="uses">${uses}</div>`:''}${(d.others||[]).length?`<p>そのほか: ${esc(d.others.join('、'))}</p>`:''}
+  ${(d.steps||[]).length?`<details><summary>作り方を見る</summary><ol>${d.steps.map(s=>`<li>${esc(s)}</li>`).join('')}</ol>${d.keep?`<p>残ったときの目安: ${keepText(d.keep)}</p>`:''}</details>`:''}
+  <div class="row" style="margin-top:8px">${d.done?'<div class="done">記録済み</div>':`<button class="btn" data-act="cooked" data-i="${i}">作った</button>`}
   <a class="btn line" target="_blank" rel="noopener" href="${cookpad(d.search||d.name)}">クックパッド</a></div></div>`}
 
 const WD='日月火水木金土';
+let logMonth=today().slice(0,7),logSel=null,lMealSel='pm',leftEd=null;const openRecs=new Set();
+const LOCNAME={'常温':'pantry','冷蔵':'fridge','冷凍':'freezer'};
+function normLeft(r){if(typeof r.left==='string'){const m=r.left.match(/(\d+)%を(常温|冷蔵|冷凍)/);
+    r.left=m?{pct:+m[1],loc:LOCNAME[m[2]],itemId:(S.items.find(i=>i.cat==='作りおき'&&i.name===r.name)||{}).id||null}:null}
+  return r.left||null}
+function recHtml(r){const lf=normLeft(r);
+  return `<details class="rec" data-id="${r.id}" ${openRecs.has(r.id)?'open':''}><summary><span class="stamp">${esc(r.role||'一品')}</span><b>${esc(r.name)}</b>${r.note?'<span class="hasnote">感想あり</span>':''}</summary><div class="recbody">
+  ${r.desc?`<p>${esc(r.desc)}</p>`:''}${r.uses.length?`<div class="uses">${r.uses.map(u=>`<span>${esc(u)}</span>`).join('')}</div>`:''}
+  ${r.steps.length?`<details><summary>作り方を見る</summary>${r.others.length?`<p>そのほか: ${esc(r.others.join('、'))}</p>`:''}<ol>${r.steps.map(s=>`<li>${esc(s)}</li>`).join('')}</ol></details>`:''}
+  <div class="leftrow"><span>残した量: <b>${lf?lf.pct+'%（'+LOC[lf.loc].t+'保存）':'なし'}</b></span><button data-act="leftEdit" data-id="${r.id}">変更</button></div>
+  <label class="f" style="margin-top:6px">感想</label><textarea rows="3" maxlength="140" data-note="${r.id}" placeholder="味、家族の反応、次に変えたいところなど">${esc(r.note||'')}</textarea><div class="cnt140">${(r.note||'').length} / 140</div>
+  <div class="acts"><a target="_blank" rel="noopener" href="${cookpad(r.search||r.name)}">クックパッドで探す</a><button data-act="logDel" data-id="${r.id}">削除</button></div></div></details>`}
 function vLog(){
-  const list=[...S.log].sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0);let out='',cur='';
-  for(const r of list){
-    if(r.date!==cur){cur=r.date;const d=parse(r.date);out+=`<div class="day">${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${WD[d.getDay()]}）</div>`}
-    out+=`<div class="rec">${r.role?`<span class="stamp">${esc(r.role)}</span>`:''}<h3>${esc(r.name)}</h3>${r.desc?`<p>${esc(r.desc)}</p>`:''}
-    ${r.uses.length?`<div class="uses">${r.uses.map(u=>`<span>${esc(u)}</span>`).join('')}</div>`:''}${r.left?`<p>残り: ${esc(r.left)}</p>`:''}
-    ${r.steps.length?`<details><summary>作り方を見る</summary>${r.others.length?`<p>そのほか: ${esc(r.others.join('、'))}</p>`:''}<ol>${r.steps.map(s=>`<li>${esc(s)}</li>`).join('')}</ol></details>`:''}
-    <label class="f" style="margin-top:10px">感想</label><textarea rows="3" maxlength="140" data-note="${r.id}" placeholder="味、家族の反応、次に変えたいところなど">${esc(r.note||'')}</textarea><div class="cnt140">${(r.note||'').length} / 140</div>
-    <div class="acts"><a target="_blank" rel="noopener" href="${cookpad(r.search||r.name)}">クックパッドで探す</a><button data-act="logDel" data-id="${r.id}">削除</button></div></div>`}
-  return `<h1>記録</h1><button class="btn line" data-act="logAdd">記録を追加する</button>
-  ${list.length?out:`<div class="oshina" style="margin-top:16px"><div class="pot"><span class="p">🍽️</span><div>作った料理がここに残ります。<br>献立で「作った」を押すと自動で記録されます。</div></div></div>`}`}
+  const [y,mo]=logMonth.split('-').map(Number),first=new Date(y,mo-1,1),n=new Date(y,mo,0).getDate(),by={};
+  for(const r of S.log)(by[r.date]=by[r.date]||[]).push(r);
+  let cells=WD.split('').map(w=>`<div class="wd">${w}</div>`).join('')+'<div></div>'.repeat(first.getDay());
+  for(let d=1;d<=n;d++){const ds=logMonth+'-'+pad(d),has=by[ds];
+    cells+=`<button class="cd${has?' has':''}${ds===today()?' today':''}${ds===logSel?' sel':''}" data-act="calDay" data-v="${ds}" ${has?`aria-label="${d}日 ${has.length}品"`:'disabled'}>${d}${has?'<i></i>':''}</button>`}
+  const days=Object.keys(by).filter(d=>d.startsWith(logMonth)).sort().reverse();
+  const cards=days.map(ds=>{const d=parse(ds);
+    return `<section class="daycard${ds===logSel?' sel':''}" id="d-${ds}"><div class="day">${d.getMonth()+1}月${d.getDate()}日（${WD[d.getDay()]}）</div>
+    ${MEALS.map(k=>{const rs=by[ds].filter(r=>(r.meal||'pm')===k);return rs.length?`<div class="mealrow"><span class="ml">${MEAL[k].s}</span><div class="mlist">${rs.map(recHtml).join('')}</div></div>`:''}).join('')}</section>`}).join('');
+  return `<h1>記録</h1>
+  <div class="cal2"><div class="hdr"><button data-act="calMove" data-d="-1" aria-label="前の月">‹</button><span>${y}年${mo}月</span><button data-act="calMove" data-d="1" aria-label="次の月">›</button></div><div class="grid">${cells}</div>
+  <p class="hint" style="text-align:center;margin-top:8px">印のある日をタップすると、その日の記録に移動します。</p></div>
+  ${cards||`<div class="oshina" style="margin-top:14px"><div class="pot"><span class="p">🍽️</span><div>${S.log.length?'この月の記録はありません。':'作った料理がここに残ります。<br>献立で「作った」を押すと自動で記録されます。'}</div></div></div>`}
+  <div style="height:14px"></div><button class="btn line" data-act="logAdd">記録を追加する</button>`}
+function leftSheet(r){const lf=normLeft(r),it=lf&&lf.itemId&&S.items.find(i=>i.id===lf.itemId);
+  if(!leftEd||leftEd.id!==r.id)leftEd={id:r.id,pct:lf?lf.pct:50,loc:lf?lf.loc:'fridge'};
+  const k={...KEEP_DEF,...(r.keep||{})},n=shelfDays(r.name,leftEd.loc,'作りおき',k);
+  openSheet(`<h3>「${esc(r.name)}」の残した量</h3>
+  <label class="f">残した量（目分量）</label><div class="row"><input type="range" id="lePct" min="0" max="100" step="10" value="${leftEd.pct}"><b id="leOut" style="flex:none;width:64px;text-align:right;font-size:18px">${leftEd.pct?leftEd.pct+'%':'なし'}</b></div>
+  <label class="f">保存する場所</label><div class="locs">${LOCS.map(v=>`<button data-act="leLoc" data-v="${v}" class="${leftEd.loc===v?'on':''}"><span class="e">${LOC[v].e}</span>${LOC[v].t}</button>`).join('')}</div>
+  <p class="hint" style="font-size:13px">${n>0?`食べ切る目安: <b>${LOC[leftEd.loc].t}で${keepLabel(n)}以内</b>。`:`<b style="color:var(--acc)">この料理は${LOC[leftEd.loc].t}保存に向きません。</b>`}
+  ${it?'食材タブにある残りも同じ量に直します。':lf?'この残りはすでに食材タブにないため、記録だけを直します。':'食材タブに残りを追加します。'}</p>
+  <div style="height:14px"></div><button class="btn" data-act="leSave">保存する</button>`)}
 
 function vSettings(){const s=S.settings;
   return `<h1>設定</h1>
@@ -449,28 +503,35 @@ function consume(id,amount){const it=S.items.find(i=>i.id===id);if(!it)return;
   if(amount==null||amount>=it.qty-1e-9)S.items=S.items.filter(i=>i.id!==id);else it.qty=Math.round((it.qty-amount)*100)/100}
 function editSheet(it){form=newForm(it);
   openSheet(`<h3>食材を直す</h3>${formHtml(form)}<div style="height:8px"></div><button class="btn danger" data-act="del" data-id="${it.id}">在庫から削除</button>`);autoFill()}
-let cookIdx=-1,left=null;
+let cook=null,left=null;
 const keepOf=d=>({...KEEP_DEF,...((d&&d.keep)||{})});
 const keepLabel=n=>n>=60?'約'+Math.round(n/30)+'か月':n>=14?'約'+Math.round(n/7)+'週間':n+'日';
 const keepText=k=>LOCS.filter(l=>l!=='pantry').concat('pantry').map(l=>{const n=Math.max(0,+keepOf({keep:k})[l]||0);return LOC[l].t+(n>0?' '+keepLabel(n):' 不向き')}).join('・');
-function leftHtml(){const d=S.menu.dishes[cookIdx],n=shelfDays(d.name,left.loc,'作りおき',keepOf(d));
+const LEFT_BTN='<button class="btn line" data-act="lfOn">残した（作った料理を保存する）</button>';
+function leftHtml(){const d=cook.d,ai=cook.custom&&!d.keep,n=shelfDays(d.name,left.loc,'作りおき',keepOf(d));
   return `<label class="f">残った量（目分量）</label><div class="row"><input type="range" id="lfPct" min="10" max="100" step="10" value="${left.pct}"><b id="lfOut" style="flex:none;width:56px;text-align:right;font-size:18px">${left.pct}%</b></div>
   <label class="f">保存する場所</label><div class="locs">${LOCS.map(v=>`<button data-act="lfLoc" data-v="${v}" class="${left.loc===v?'on':''}"><span class="e">${LOC[v].e}</span>${LOC[v].t}</button>`).join('')}</div>
-  <p class="hint" style="font-size:13px">${n>0?`食べ切る目安: <b>${LOC[left.loc].t}で${keepLabel(n)}以内</b>（${md(addDays(today(),n))}まで）。この料理の内容からAIが判断した目安です。`:`<b style="color:var(--acc)">この料理は${LOC[left.loc].t}保存に向きません。</b>別の場所を選んでください。`}</p>
+  <p class="hint" style="font-size:13px">${ai?(S.settings.apiKey?'食べ切る目安は、記録するときにAIが料理名から判断します。':'食べ切る目安は一般的な日数（冷蔵3日・冷凍約3週間）で設定します。'):n>0?`食べ切る目安: <b>${LOC[left.loc].t}で${keepLabel(n)}以内</b>（${md(addDays(today(),n))}まで）。この料理の内容からAIが判断した目安です。`:`<b style="color:var(--acc)">この料理は${LOC[left.loc].t}保存に向きません。</b>別の場所を選んでください。`}</p>
   <button class="btn sub" data-act="lfOff" style="margin-top:10px">残さなかった（取り消す）</button>`}
 function ckRow(it,q){const all=q>=it.qty;
   return `<div class="rv" data-id="${it.id}"><div class="top"><input type="checkbox" checked data-ck="on" aria-label="在庫から引く"><b style="flex:1">${emo(it)} ${esc(it.name)}</b><span class="hint" style="margin:0">${LOC[it.loc].t}・残り${fq(it.qty)}${esc(it.unit)}</span></div>
   <div class="row"><input type="number" inputmode="decimal" step="any" data-ck="qty" value="${fq(q)}" ${all?'disabled':''}><span style="flex:none;min-width:44px;white-space:nowrap">${esc(it.unit)}</span><label style="flex:1.4;font-size:14px"><input type="checkbox" data-ck="all" ${all?'checked':''} style="width:20px;height:20px;vertical-align:-4px"> 使い切った</label></div></div>`}
-function cookedSheet(i){cookIdx=i;left=null;const d=S.menu.dishes[i],seen=new Set();let rows='';
+function cookedSheet(i){left=null;
+  cook=i==null?{d:{role:'主菜',name:'',desc:'',uses:[],others:[],steps:[]},custom:true}:{d:curMenu().dishes[i],custom:false};
+  const d=cook.d,seen=new Set();let rows='';
   for(const u of d.uses||[]){const it=findInv(u);if(!it||seen.has(it.id))continue;seen.add(it.id);rows+=ckRow(it,Math.min(it.qty,u.qty>0?u.qty:it.qty))}
-  const rest=sorted().filter(x=>!seen.has(x.id));
-  openSheet(`<h3>「${esc(d.name)}」で使った食材</h3><p class="hint" style="margin-bottom:6px">在庫から差し引き、「記録」に残します。量は直せます。使っていないものはチェックを外してください。</p>
+  const rest=sorted().filter(x=>!seen.has(x.id)),chips=`<div class="chips">${rest.map(x=>`<button class="chip" data-act="ckAdd" data-id="${x.id}">${emo(x)} ${esc(x.name)}</button>`).join('')}</div>`;
+  const head=cook.custom?`<h3>自分で作ったメニューを追加</h3><p class="hint">今日の${MEAL[meal].t}として記録します。</p>
+  <label class="f">メニューの名前</label><input type="text" id="cName" placeholder="例: 肉じゃが" autocomplete="off" enterkeyhint="done">
+  <label class="f">種類</label><div class="seg" id="cRole">${ROLES.map(r=>`<button data-act="cRole" data-v="${r}" class="${r==='主菜'?'on':''}">${r}</button>`).join('')}</div>
+  <label class="f">使った食材${rest.length?'（タップで追加。量は直せます）':''}</label>${rest.length?chips:'<p class="hint">在庫に食材がありません。</p>'}<div id="ckRows" style="margin-top:6px"></div>`
+  :`<h3>「${esc(d.name)}」で使った食材</h3><p class="hint" style="margin-bottom:6px">在庫から差し引き、「記録」に残します。量は直せます。使っていないものはチェックを外してください。</p>
   <div id="ckRows">${rows}</div>${rows?'':'<p class="hint" id="ckNone">レシピの食材で在庫に登録済みのものは見つかりませんでした。下のボタンから追加できます。</p>'}
   ${rest.length?`<div style="height:12px"></div><button class="btn line" data-act="ckMore">＋ ほかに使った食材を追加</button>
-  <div id="ckPick" hidden><p class="hint" style="margin:12px 2px 0">使った食材をタップしてください。</p><div class="chips">${rest.map(x=>`<button class="chip" data-act="ckAdd" data-id="${x.id}">${emo(x)} ${esc(x.name)}</button>`).join('')}</div></div>`:''}
-  <div style="height:18px;border-bottom:1px solid var(--g3);margin-bottom:14px"></div>
-  <div id="lfBox"><button class="btn line" data-act="lfOn">残した（作った料理を保存する）</button></div>
-  <div style="height:14px"></div><button class="btn" data-act="ckSave">在庫から引いて記録する</button>`)}
+  <div id="ckPick" hidden><p class="hint" style="margin:12px 2px 0">使った食材をタップしてください。</p>${chips}</div>`:''}`;
+  openSheet(`${head}<div style="height:18px;border-bottom:1px solid var(--g3);margin-bottom:14px"></div>
+  <div id="lfBox">${LEFT_BTN}</div>
+  <div style="height:14px"></div><button class="btn" data-act="ckSave">${cook.custom?'記録する':'在庫から引いて記録する'}</button>`)}
 
 /* ========== Gemini ========== */
 async function gemini(parts,temp){const s=S.settings;
@@ -509,9 +570,13 @@ async function readReceipt(file){
 async function genMenu(silent){
   const items=sorted().filter(i=>daysLeft(i.exp)>=-1);if(!items.length||busy)return;
   busy=true;menuErr='';if(!silent||view==='menu')render();
-  const prev=S.menu&&S.menu.dishes?S.menu.dishes.map(d=>d.name):[];
+  const mk=meal,ms=menus(),cur=ms[mk],keepD=cur?cur.dishes.filter(d=>d.done||d.custom):[];
+  const prev=MEALS.flatMap(k=>ms[k]?ms[k].dishes.map(d=>d.name):[]);
+  const RULE={am:'朝ごはんなので、忙しい朝でも15分以内で作れる軽めの内容にする。品数は1〜3品でよく、4種類すべてを揃えなくてよい。',noon:'昼ごはんなので、手早く作れて満足感のある内容にする。丼・麺・ワンプレートなど一皿ものでもよく、品数は1〜3品でよい。',pm:'夜ごはんなので、主菜・主食・副菜・汁物を各1品、計4品を基本にする。'};
   try{const inv=items.map(i=>({id:i.id,name:i.name,qty:i.qty,unit:i.unit,place:LOC[i.loc].t,days_left:daysLeft(i.exp),...(i.cat==='作りおき'?{kind:'作りおき料理(残り'+i.qty+'%)'}:{})}));
-    const out=await gemini([{text:`あなたは家庭料理の献立アドバイザーです。下の在庫から今日の献立(主菜・主食・副菜・汁物を各1品、計4品)を${S.settings.people}人分で考えてください。
+    const out=await gemini([{text:`あなたは家庭料理の献立アドバイザーです。下の在庫から今日の${MEAL[mk].t}の献立を${S.settings.people}人分で考えてください。
+- ${RULE[mk]}
+- 各料理の role は 主菜・主食・副菜・汁物 のいずれかにする。
 - 主食はご飯・パン・麺類など。在庫になければ常備の米で白ごはんや混ぜご飯にしてよい。丼・パスタ・うどんのように主菜と主食を兼ねる料理は role を主菜にし、主食は省いてよい。
 - uses には、その料理で使う在庫の食材をすべて漏れなく入れる。id は在庫の id をそのまま写す。
 - kind が「作りおき料理」のものは調理済みの残り。温め直してそのまま一品にするか、アレンジして使う（uses の qty は使う割合の数値、unit は %）。
@@ -519,14 +584,14 @@ async function genMenu(silent){
 - days_left が小さい食材(特に ${S.settings.remindDays} 以下)を最優先で使い切る。期限まで余裕のある冷凍品・常温品は急がない。
 - 塩・砂糖・醤油・味噌・酒・みりん・酢・油・だし・こしょう・片栗粉・小麦粉・米は常備していると仮定してよい。それ以外で在庫にないものはできるだけ使わない。
 - 家庭で無理なく作れる手順(各6ステップ以内)。肉・魚は中心まで十分に加熱する。
-${S.wish?'- 希望: '+S.wish+'\n':''}${prev.length?'- 前回の提案('+prev.join('、')+')とは別の料理にする。\n':''}
+${S.wish?'- 希望: '+S.wish+'\n':''}${prev.length?'- 今日すでに出た料理('+prev.join('、')+')とは別の料理にする。\n':''}
 次の形のJSONだけを返す:
 {"comment":"献立のひとこと(20字以内)","dishes":[{"role":"主菜|主食|副菜|汁物","name":"料理名","desc":"一文の説明","minutes":調理分数,"uses":[{"id":"在庫のid","name":"食材名","qty":使う量(在庫と同じ単位の数値),"unit":"単位"}],"others":["在庫以外に使う材料と分量"],"steps":["手順"],"keep":{"fridge":冷蔵での日数,"freezer":冷凍での日数,"pantry":常温での日数},"search":"クックパッド検索用に主な食材を2つ、空白区切り"}]}
 在庫: ${JSON.stringify(inv)}`}],0.8);
     if(!out.dishes||!out.dishes.length)throw new Error('献立を作れませんでした。もう一度お試しください');
-    S.menu={date:today(),comment:out.comment||'',dishes:out.dishes};save();
-    if(silent&&view!=='menu')toast('今日の献立ができました');
-  }catch(e){if(!silent)menuErr=e.message;S.menuTried=today();save()}
+    menus()[mk]={comment:out.comment||'',dishes:[...keepD,...out.dishes]};save();
+    if(silent&&view!=='menu')toast(MEAL[mk].t+'の献立ができました');
+  }catch(e){if(!silent)menuErr=e.message;S.menuTried=today()+mk;save()}
   busy=false;render()}
 
 /* ========== カレンダー(.ics) / ファイル ========== */
@@ -549,7 +614,7 @@ async function giveFile(name,text,type){const file=new File([text],name,{type});
 /* ========== イベント ========== */
 document.addEventListener('click',async e=>{
   const nav=e.target.closest('[data-nav]');
-  if(nav){e.preventDefault();if(view==='settings')readSettings();view=nav.dataset.nav;closeSheet();render();window.scrollTo(0,0);if(view==='menu')autoMenu();return}
+  if(nav){e.preventDefault();if(view==='settings')readSettings();view=nav.dataset.nav;closeSheet();render();window.scrollTo(0,0);if(view==='menu'){meal=mealNow();render();autoMenu()}return}
   if(e.target.id==='shade'){closeSheet();if(form&&form.id)form=null;return}
   const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act,id=b.dataset.id,it=id&&S.items.find(i=>i.id===id);
   if(b.tagName==='A')e.preventDefault();
@@ -582,19 +647,30 @@ document.addEventListener('click',async e=>{
   case'people':S.settings.people=+b.dataset.v;save();keepWish();render();break;
   case'genMenu':keepWish();genMenu(false);break;
   case'cooked':cookedSheet(+b.dataset.i);break;
+  case'ownDish':cookedSheet(null);break;
+  case'meal':keepWish();meal=b.dataset.v;menuErr='';render();break;
+  case'cRole':cook.d.role=b.dataset.v;b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));break;
   case'lfOn':left={pct:50,loc:'fridge'};document.getElementById('lfBox').innerHTML=leftHtml();break;
-  case'lfOff':left=null;document.getElementById('lfBox').innerHTML='<button class="btn line" data-act="lfOn">残した（作った料理を保存する）</button>';break;
+  case'lfOff':left=null;document.getElementById('lfBox').innerHTML=LEFT_BTN;break;
   case'lfLoc':left.loc=b.dataset.v;document.getElementById('lfBox').innerHTML=leftHtml();break;
   case'ckMore':document.getElementById('ckPick').hidden=false;b.hidden=true;break;
-  case'ckAdd':{if(!it)break;const st=stepOf(it.unit);document.getElementById('ckRows').insertAdjacentHTML('beforeend',ckRow(it,Math.min(it.qty,it.unit==='g'||it.unit==='ml'?st*2:1)));
+  case'ckAdd':{if(!it)break;const st=stepOf(it.unit);document.getElementById('ckRows').insertAdjacentHTML('beforeend',ckRow(it,it.unit==='%'?it.qty:Math.min(it.qty,it.unit==='g'||it.unit==='ml'?st*2:1)));
     b.remove();const nn=document.getElementById('ckNone');if(nn)nn.remove();break}
-  case'ckSave':{if(left&&!(shelfDays('',left.loc,'作りおき',keepOf(S.menu.dishes[cookIdx]))>0)){toast('この料理は'+LOC[left.loc].t+'保存に向きません。保存場所を選び直してください');break}
+  case'ckSave':{const d=cook.d;
+    if(cook.custom){const nm=document.getElementById('cName').value.trim();if(!nm){toast('メニューの名前を入れてください');break}d.name=nm;d.search=nm;
+      if(left&&!d.keep&&S.settings.apiKey){b.disabled=true;b.textContent='保存の目安を確認中…';
+        try{const o=await gemini([{text:`家庭料理「${nm}」が残った場合に食べ切るべき日数の目安を、保存方法ごとに判断してください。食品安全を優先して控えめに。その保存方法に向かない場合は0。次のJSONだけを返す: {"fridge":日数,"freezer":日数,"pantry":日数}`}],0.1);
+          if(o&&o.fridge!=null)d.keep={fridge:+o.fridge||0,freezer:+o.freezer||0,pantry:+o.pantry||0}}catch(er){}
+        b.disabled=false;b.textContent='記録する';if(d.keep&&left)document.getElementById('lfBox').innerHTML=leftHtml()}}
+    if(left&&!(shelfDays(d.name,left.loc,'作りおき',keepOf(d))>0)){toast('この料理は'+LOC[left.loc].t+'保存に向きません。保存場所を選び直してください');break}
     snap();let n=0;const used=[];document.querySelectorAll('#sheet .rv').forEach(r=>{if(!r.querySelector('[data-ck=on]').checked)return;
       const x=S.items.find(y=>y.id===r.dataset.id);if(!x)return;
       const all=r.querySelector('[data-ck=all]').checked,q=parseFloat(r.querySelector('[data-ck=qty]').value),amt=all?x.qty:Math.min(x.qty,q>0?q:0);
       if(!(amt>0))return;used.push(x.name+' '+fq(amt)+x.unit);consume(x.id,all?null:amt);n++});
-    const d=S.menu&&S.menu.dishes[cookIdx];if(d)S.log.unshift({id:uid(),date:today(),name:d.name,role:d.role||'',desc:d.desc||'',uses:used.length?used:(d.uses||[]).map(u=>u.name+(u.qty?' '+fq(u.qty)+(u.unit||''):'')),others:d.others||[],steps:d.steps||[],search:d.search||d.name,note:'',left:left?left.pct+'%を'+LOC[left.loc].t+'保存':''});
-    if(d&&left){const k=keepOf(d);S.items.push({id:uid(),name:d.name,cat:'作りおき',loc:left.loc,qty:left.pct,unit:'%',bought:today(),exp:addDays(today(),shelfDays(d.name,left.loc,'作りおき',k)),est:true,keep:k});S.fold[left.loc]=false}
+    const rec={id:uid(),date:today(),meal,name:d.name,role:d.role||'',desc:d.desc||'',uses:used.length?used:(d.uses||[]).map(u=>u.name+(u.qty?' '+fq(u.qty)+(u.unit||''):'')),others:d.others||[],steps:d.steps||[],search:d.search||d.name,note:'',keep:d.keep||null,left:null};
+    if(left){const k=keepOf(d),iid=uid();S.items.push({id:iid,name:d.name,cat:'作りおき',loc:left.loc,qty:left.pct,unit:'%',bought:today(),exp:addDays(today(),shelfDays(d.name,left.loc,'作りおき',k)),est:true,keep:k});S.fold[left.loc]=false;rec.left={pct:left.pct,loc:left.loc,itemId:iid}}
+    S.log.unshift(rec);
+    if(cook.custom){const ms=menus();(ms[meal]=ms[meal]||{comment:'',dishes:[]}).dishes.push({...d,uses:[],done:true,custom:true})}else d.done=true;
     const msg=left?'記録して、残りを'+LOC[left.loc].room+'に入れました':'記録しました（在庫から '+n+' 品）';left=null;
     save();closeSheet();render();toast(msg,true);break}
   case'ics':{const r=buildIcs();if(!r.count){toast('登録できる食材がありません');break}await giveFile('shokuzai-reminder.ics',r.text,'text/calendar');break}
@@ -602,18 +678,36 @@ document.addEventListener('click',async e=>{
   case'export':{const copy={...S,settings:{...S.settings,apiKey:''}};await giveFile('perorincho-backup-'+today()+'.json',JSON.stringify(copy,null,1),'application/json');break}
   case'import':document.getElementById('importFile').click();break;
   case'wipeAsk':openSheet('<h3>在庫をすべて消しますか？</h3><p class="hint">登録した食材がすべて消えます。設定とAPIキーは残ります。</p><div style="height:14px"></div><button class="btn danger" data-act="wipe">すべて消す</button><div style="height:8px"></div><button class="btn sub" data-act="close">やめる</button>');break;
-  case'wipe':snap();S.items=[];S.menu=null;save();closeSheet();render();toast('在庫を消しました',true);break;
+  case'wipe':snap();S.items=[];S.menus=null;save();closeSheet();render();toast('在庫を消しました',true);break;
   case'close':closeSheet();break;
-  case'logAdd':openSheet(`<h3>記録を追加</h3><label class="f">日付</label><input type="date" id="lDate" value="${today()}" max="${today()}"><label class="f">料理名</label><input type="text" id="lName" placeholder="例: 肉じゃが" autocomplete="off"><label class="f">感想（140字まで）</label><textarea id="lNote" rows="3" maxlength="140" placeholder="味、家族の反応、次に変えたいところなど"></textarea><div style="height:16px"></div><button class="btn" data-act="logSave">記録する</button>`);break;
+  case'logAdd':lMealSel=mealNow();openSheet(`<h3>記録を追加</h3><label class="f">日付</label><input type="date" id="lDate" value="${logSel||today()}" max="${today()}">
+    <label class="f">いつのごはん</label><div class="seg">${MEALS.map(k=>`<button data-act="lMeal" data-v="${k}" class="${lMealSel===k?'on':''}">${MEAL[k].t}</button>`).join('')}</div>
+    <label class="f">料理名</label><input type="text" id="lName" placeholder="例: 肉じゃが" autocomplete="off"><label class="f">感想（140字まで）</label><textarea id="lNote" rows="3" maxlength="140" placeholder="味、家族の反応、次に変えたいところなど"></textarea><div style="height:16px"></div><button class="btn" data-act="logSave">記録する</button>`);break;
+  case'lMeal':lMealSel=b.dataset.v;b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));break;
   case'logSave':{const g=x=>document.getElementById(x),name=g('lName').value.trim();if(!name){toast('料理名を入れてください');break}
-    S.log.push({id:uid(),date:g('lDate').value||today(),name,role:'',desc:'',uses:[],others:[],steps:[],search:name,note:g('lNote').value.slice(0,140)});save();closeSheet();render();toast('記録しました');break}
+    const r={id:uid(),date:g('lDate').value||today(),meal:lMealSel,name,role:'',desc:'',uses:[],others:[],steps:[],search:name,note:g('lNote').value.slice(0,140),keep:null,left:null};
+    S.log.push(r);logMonth=r.date.slice(0,7);logSel=r.date;openRecs.add(r.id);save();closeSheet();render();toast('記録しました');break}
   case'logDel':{const r=S.log.find(x=>x.id===id);if(!r)break;snap();S.log=S.log.filter(x=>x.id!==id);save();render();toast('「'+r.name+'」の記録を削除しました',true);break}
+  case'calMove':{const [y,m]=logMonth.split('-').map(Number),d=new Date(y,m-1+(+b.dataset.d),1);logMonth=d.getFullYear()+'-'+pad(d.getMonth()+1);logSel=null;render();break}
+  case'calDay':{logSel=b.dataset.v;render();const el=document.getElementById('d-'+logSel);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});break}
+  case'leftEdit':{const r=S.log.find(x=>x.id===id);if(r){leftEd=null;leftSheet(r)}break}
+  case'leLoc':{leftEd.loc=b.dataset.v;const r=S.log.find(x=>x.id===leftEd.id);if(r)leftSheet(r);break}
+  case'leSave':{const r=S.log.find(x=>x.id===leftEd.id);if(!r)break;const lf=normLeft(r),item=lf&&lf.itemId&&S.items.find(i=>i.id===lf.itemId),pct=leftEd.pct,loc=leftEd.loc;
+    const k={...KEEP_DEF,...(r.keep||{})},days=shelfDays(r.name,loc,'作りおき',k);
+    if(pct>0&&!(days>0)&&(!lf||lf.loc!==loc)){toast('この料理は'+LOC[loc].t+'保存に向きません。保存場所を選び直してください');break}
+    snap();let msg='記録を直しました';
+    if(pct===0){if(item){S.items=S.items.filter(i=>i.id!==item.id);msg='残りなしに直し、食材タブからも外しました'}r.left=null}
+    else if(item){item.qty=pct;if(item.loc!==loc){item.loc=loc;item.exp=addDays(today(),days);S.fold[loc]=false}r.left={pct,loc,itemId:item.id};msg='残した量を'+pct+'%に直しました（食材タブにも反映）'}
+    else if(lf){r.left={pct,loc,itemId:null}}
+    else{const iid=uid();S.items.push({id:iid,name:r.name,cat:'作りおき',loc,qty:pct,unit:'%',bought:today(),exp:addDays(today(),days),est:true,keep:k});S.fold[loc]=false;r.left={pct,loc,itemId:iid};msg='残りを'+LOC[loc].room+'に入れました'}
+    leftEd=null;save();closeSheet();render();toast(msg,true);break}
   }});
 function keepWish(){const w=document.getElementById('wish');if(w)S.wish=w.value.trim()}
 function readSettings(){const g=id=>document.getElementById(id);if(!g('sKey'))return;const s=S.settings;
   s.apiKey=g('sKey').value.trim();s.model=g('sModel').value.trim()||DEF.settings.model;s.autoMenu=g('sAuto').checked;s.remindDays=+g('sDays').value;s.remindHour=+g('sHour').value;save()}
 document.addEventListener('input',e=>{const t=e.target;
   if(t.id==='lfPct'){left.pct=+t.value;document.getElementById('lfOut').textContent=left.pct+'%'}
+  else if(t.id==='lePct'){leftEd.pct=+t.value;document.getElementById('leOut').textContent=leftEd.pct?leftEd.pct+'%':'なし'}
   else if(t.id==='fName'){form.name=t.value.trim();autoFill()}
   else if(t.id==='fExp'){form.exp=t.value;form.touched=true;form.est=false;form.note='';syncForm();autoFill()}
   else if(t.id==='fCat'){form.catTouched=true;syncForm();autoFill()}
@@ -632,8 +726,9 @@ document.addEventListener('change',e=>{const t=e.target;
       const key=S.settings.apiKey;S={...DEF,...j,log:j.log||[],fold:j.fold||{},settings:{...DEF.settings,...(j.settings||{}),apiKey:key}};save();view='home';render();toast(S.items.length+' 品を復元しました')}catch(er){toast('バックアップファイルを読み込めませんでした')}};rd.readAsText(t.files[0]);t.value=''}
   if(t.id==='wish')keepWish();
 });
+document.addEventListener('toggle',e=>{const t=e.target;if(t.matches&&t.matches('details.rec')){t.open?openRecs.add(t.dataset.id):openRecs.delete(t.dataset.id)}},true);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!document.body.classList.contains('open')&&view!=='add'&&view!=='settings'&&view!=='log'){render();autoMenu()}});
-function autoMenu(){const s=S.settings;if(s.apiKey&&s.autoMenu&&S.items.length&&(!S.menu||S.menu.date!==today())&&S.menuTried!==today())genMenu(true)}
+function autoMenu(){const s=S.settings,mk=mealNow();if(view!=='menu')meal=mk;if(meal!==mk)return;const m=menus()[mk];if(s.apiKey&&s.autoMenu&&S.items.length&&!(m&&m.dishes.length)&&S.menuTried!==today()+mk)genMenu(true)}
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
 document.querySelectorAll('[data-ic]').forEach(e=>e.innerHTML=IC[e.dataset.ic]);
 render();autoMenu();
