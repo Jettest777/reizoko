@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ペロリンチョ">
+<meta name="application-name" content="ペロリンチョ">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#f4f9f6">
 <meta name="color-scheme" content="light">
@@ -42,7 +43,7 @@ svg.svgi{width:1.3em;height:1.3em;vertical-align:-.28em;flex:none}
 .memo li{display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px dotted var(--g3)}
 .memo li span.nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
 .memo .go{display:block;margin-top:10px;font-weight:600;font-size:13.5px;color:var(--g7);text-align:right;width:100%;letter-spacing:.04em}
-.fridge{margin-top:18px;background:linear-gradient(168deg,var(--g6),var(--g7) 40%,#276b43);border-radius:22px 22px 14px 14px;padding:8px 8px 12px;box-shadow:0 18px 34px rgba(18,48,31,.28),inset 0 1px 0 rgba(255,255,255,.25);position:relative}
+.fridge{margin-top:18px;padding-top:14px !important;background:linear-gradient(168deg,var(--g6),var(--g7) 40%,#276b43);border-radius:22px 22px 14px 14px;padding:8px 8px 12px;box-shadow:0 18px 34px rgba(18,48,31,.28),inset 0 1px 0 rgba(255,255,255,.25);position:relative}
 .fridge::after{content:"";position:absolute;left:24px;right:24px;bottom:-7px;height:7px;background:linear-gradient(90deg,var(--g8) 0 40px,transparent 40px calc(100% - 40px),var(--g8) calc(100% - 40px));border-radius:0 0 4px 4px}
 .plate{display:flex;justify-content:center;margin:4px 0 2px}
 .plate span{font:500 11px/1 var(--mincho);letter-spacing:.5em;text-indent:.5em;color:#fff;opacity:.85;padding:5px 0}
@@ -124,7 +125,8 @@ input[type=checkbox]{accent-color:var(--g7)}
 .oshina .ttl::after{content:"";display:block;width:36px;height:1px;background:var(--g7);margin:10px auto 8px}
 .oshina .dt{text-align:center;font-size:12px;color:var(--sub);letter-spacing:.14em}
 .oshina .cm{text-align:center;font:500 14.5px var(--mincho);color:var(--g7);margin:6px 0 10px;letter-spacing:.08em}
-.dish{padding:18px 4px 16px;border-top:1px solid var(--g2)}
+.dish{padding:14px 4px 16px}.dish+.dish{border-top:1px dotted var(--g3)}
+.cat{display:flex;align-items:center;gap:10px;font:600 15px var(--mincho);letter-spacing:.3em;color:#fff;background:var(--g7);border-radius:3px;padding:6px 12px;margin:14px 0 2px}.cat span{font-size:20px;letter-spacing:0;width:34px;height:34px;border-radius:50%;background:#fff;display:grid;place-items:center;margin:-2px 0}
 .dish .hd{display:flex;gap:14px;align-items:center}
 .platei{flex:none;width:66px;height:66px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:30px;box-shadow:inset 0 0 0 6px var(--g0),inset 0 0 0 7px var(--g2),0 5px 10px rgba(18,48,31,.16)}
 .stamp{display:inline-block;font:600 11px var(--mincho);color:var(--g7);border:1px solid var(--g7);border-radius:2px;padding:1px 6px;letter-spacing:.3em;text-indent:.3em}
@@ -313,7 +315,7 @@ function vHome(){
   else if(hot.length)memo=`<b class="t">早めに使うもの</b><ul>${hot.slice(0,4).map(i=>{const s=status(i);return `<li><span>${emo(i)}</span><span class="nm">${esc(i.name)}</span><span class="badge ${s.k}">${s.t}</span></li>`}).join('')}</ul>${hot.length>4?`<div class="hint">ほか ${hot.length-4} 品</div>`:''}<button class="go" data-nav="menu">この食材で献立を考える　→</button>`;
   else memo=`<b class="t">急いで使う食材はありません</b>今日は好きなものを作れます。`;
   return `<div class="memo">${memo}</div>
-  <div class="fridge"><div class="plate"><span>ペロリンチョ</span></div>${compartment('fridge',all)}${compartment('freezer',all)}</div>
+  <div class="fridge">${compartment('fridge',all)}${compartment('freezer',all)}</div>
   ${compartment('pantry',all)}
   ${all.length?`<button class="cal" data-act="ics"><span class="ic">${IC.cal}</span><span>期限をカレンダーに登録する<small>期限の${S.settings.remindDays}日前 ${S.settings.remindHour}:00 に通知される予定をまとめて作ります</small></span></button>`:''}`}
 
@@ -366,7 +368,11 @@ function vReview(){
   <div style="height:16px"></div><button class="btn" data-act="rvSave">${review.filter(r=>r.on).length} 品を在庫に入れる</button>
   <div style="height:8px"></div><button class="btn sub" data-act="rvCancel">やめる</button>`}
 
-const ROLE={'主菜':'🍖','副菜':'🥗','汁物':'🍲','主食':'🍚'};
+const ROLE={'主菜':'🍳','主食':'🍚','副菜':'🥗','汁物':'🥣'};const ROLES=['主菜','主食','副菜','汁物'];
+function findInv(u){if(!u)return null;let it=S.items.find(x=>x.id===u.id);if(it)return it;const n=norm(u.name);if(!n)return null;
+  const c=lookup(u.name);return S.items.find(x=>norm(x.name)===n)||(c&&S.items.find(x=>{const k=lookup(x.name);return k&&k.name===c.name}))||S.items.find(x=>{const m=norm(x.name);return m.includes(n)||n.includes(m)})||null}
+function dishGroups(m){const idx=m.dishes.map((d,i)=>({d,i,r:ROLES.includes(d.role)?d.role:'副菜'}));
+  return ROLES.map(r=>{const g=idx.filter(x=>x.r===r);return g.length?`<div class="cat"><span>${ROLE[r]}</span>${r}</div>`+g.map(x=>dishCard(x.d,x.i)).join(''):''}).join('')}
 const cookpad=q=>'https://cookpad.com/jp/search/'+encodeURIComponent(q);
 function vMenu(){
   const items=sorted(),hot=items.filter(i=>{const k=status(i);return k.k!=='ok'&&k.d>=-1}).slice(0,3);
@@ -378,7 +384,7 @@ function vMenu(){
     if(menuErr)body+=`<div class="alert">${esc(menuErr)}</div><div style="height:10px"></div>`;
     if(m&&m.dishes&&m.dishes.length){
       body+=`<div class="oshina"><div class="ttl">本日の献立</div><div class="dt">${md(m.date)}・${S.settings.people}人分</div>${m.comment?`<div class="cm">〜 ${esc(m.comment)} 〜</div>`:''}
-        ${m.dishes.map((d,i)=>dishCard(d,i)).join('')}</div><div style="height:14px"></div><button class="btn sub" data-act="genMenu">別の献立を考えてもらう</button>`;
+        ${dishGroups(m)}</div><div style="height:14px"></div><button class="btn sub" data-act="genMenu">別の献立を考えてもらう</button>`;
     }else if(S.settings.apiKey){
       body+=`<div class="oshina"><div class="ttl">本日の献立</div><div class="pot"><span class="p">🍽️</span><div style="margin-bottom:14px">期限が近い食材を優先して、<br>今日の献立とレシピを作ります。</div><button class="btn" data-act="genMenu">献立を作ってもらう</button></div></div>`;
     }else{
@@ -390,9 +396,9 @@ function vMenu(){
   <div class="seg" style="flex:1">${[1,2,3,4].map(n=>`<button data-act="people" data-v="${n}" class="${S.settings.people===n?'on':''}">${n}人</button>`).join('')}</div></div>
   <input type="text" id="wish" style="margin-top:10px" placeholder="リクエスト（例: 15分で、和食、子ども向け）" value="${esc(S.wish||'')}"></div>${body}`}
 function dishCard(d,i){
-  const uses=(d.uses||[]).map(u=>{const it=S.items.find(x=>x.id===u.id);const hot=it&&status(it).k!=='ok';
+  const uses=(d.uses||[]).map(u=>{const it=findInv(u);const hot=it&&status(it).k!=='ok';
     return `<span class="${hot?'hot':''}">${esc(u.name)} ${u.qty?fq(u.qty):''}${esc(u.unit||'')}</span>`}).join('');
-  return `<div class="dish"><div class="hd"><div class="platei">${ROLE[d.role]||'🍽️'}</div><div><span class="stamp">${esc(d.role||'一品')}</span>${d.minutes?`<span class="min">約${esc(d.minutes)}分</span>`:''}<h3>${esc(d.name)}</h3></div></div>
+  return `<div class="dish"><h3>${esc(d.name)}${d.minutes?`<span class="min">約${esc(d.minutes)}分</span>`:''}</h3>
   <p>${esc(d.desc||'')}</p><div class="uses">${uses}</div>${(d.others||[]).length?`<p>そのほか: ${esc(d.others.join('、'))}</p>`:''}
   <details><summary>作り方を見る</summary><ol>${(d.steps||[]).map(s=>`<li>${esc(s)}</li>`).join('')}</ol></details>
   <div class="row" style="margin-top:8px"><button class="btn" data-act="cooked" data-i="${i}">作った</button>
@@ -442,12 +448,16 @@ function consume(id,amount){const it=S.items.find(i=>i.id===id);if(!it)return;
 function editSheet(it){form=newForm(it);
   openSheet(`<h3>食材を直す</h3>${formHtml(form)}<div style="height:8px"></div><button class="btn danger" data-act="del" data-id="${it.id}">在庫から削除</button>`);autoFill()}
 let cookIdx=-1;
-function cookedSheet(i){cookIdx=i;const d=S.menu.dishes[i];
-  const rows=(d.uses||[]).map(u=>{const it=S.items.find(x=>x.id===u.id);if(!it)return'';
-    const q=Math.min(it.qty,u.qty>0?u.qty:it.qty);
-    return `<div class="rv" data-id="${it.id}"><div class="top"><input type="checkbox" checked data-ck="on" aria-label="在庫から引く"><b style="flex:1">${emo(it)} ${esc(it.name)}</b><span class="hint" style="margin:0">残り${fq(it.qty)}${esc(it.unit)}</span></div>
-    <div class="row"><input type="number" inputmode="decimal" step="any" data-ck="qty" value="${fq(q)}" ${q>=it.qty?'disabled':''}><span style="flex:none;width:44px">${esc(it.unit)}</span><label style="flex:1.4;font-size:14px"><input type="checkbox" data-ck="all" ${q>=it.qty?'checked':''} style="width:20px;height:20px;vertical-align:-4px"> 使い切った</label></div></div>`}).join('');
-  openSheet(`<h3>「${esc(d.name)}」で使った食材</h3><p class="hint" style="margin-bottom:6px">在庫から差し引き、「記録」に残します。使っていないものはチェックを外してください。</p>${rows||'<p class="hint">在庫から引く食材はありません。</p>'}
+function ckRow(it,q){const all=q>=it.qty;
+  return `<div class="rv" data-id="${it.id}"><div class="top"><input type="checkbox" checked data-ck="on" aria-label="在庫から引く"><b style="flex:1">${emo(it)} ${esc(it.name)}</b><span class="hint" style="margin:0">${LOC[it.loc].t}・残り${fq(it.qty)}${esc(it.unit)}</span></div>
+  <div class="row"><input type="number" inputmode="decimal" step="any" data-ck="qty" value="${fq(q)}" ${all?'disabled':''}><span style="flex:none;min-width:44px;white-space:nowrap">${esc(it.unit)}</span><label style="flex:1.4;font-size:14px"><input type="checkbox" data-ck="all" ${all?'checked':''} style="width:20px;height:20px;vertical-align:-4px"> 使い切った</label></div></div>`}
+function cookedSheet(i){cookIdx=i;const d=S.menu.dishes[i],seen=new Set();let rows='';
+  for(const u of d.uses||[]){const it=findInv(u);if(!it||seen.has(it.id))continue;seen.add(it.id);rows+=ckRow(it,Math.min(it.qty,u.qty>0?u.qty:it.qty))}
+  const rest=sorted().filter(x=>!seen.has(x.id));
+  openSheet(`<h3>「${esc(d.name)}」で使った食材</h3><p class="hint" style="margin-bottom:6px">在庫から差し引き、「記録」に残します。量は直せます。使っていないものはチェックを外してください。</p>
+  <div id="ckRows">${rows}</div>${rows?'':'<p class="hint" id="ckNone">レシピの食材で在庫に登録済みのものは見つかりませんでした。下のボタンから追加できます。</p>'}
+  ${rest.length?`<div style="height:12px"></div><button class="btn line" data-act="ckMore">＋ ほかに使った食材を追加</button>
+  <div id="ckPick" hidden><p class="hint" style="margin:12px 2px 0">使った食材をタップしてください。</p><div class="chips">${rest.map(x=>`<button class="chip" data-act="ckAdd" data-id="${x.id}">${emo(x)} ${esc(x.name)}</button>`).join('')}</div></div>`:''}
   <div style="height:14px"></div><button class="btn" data-act="ckSave">在庫から引いて記録する</button>`)}
 
 /* ========== Gemini ========== */
@@ -489,13 +499,15 @@ async function genMenu(silent){
   busy=true;menuErr='';if(!silent||view==='menu')render();
   const prev=S.menu&&S.menu.dishes?S.menu.dishes.map(d=>d.name):[];
   try{const inv=items.map(i=>({id:i.id,name:i.name,qty:i.qty,unit:i.unit,place:LOC[i.loc].t,days_left:daysLeft(i.exp)}));
-    const out=await gemini([{text:`あなたは家庭料理の献立アドバイザーです。下の在庫から今日の献立(主菜・副菜・汁物の2〜3品)を${S.settings.people}人分で考えてください。
+    const out=await gemini([{text:`あなたは家庭料理の献立アドバイザーです。下の在庫から今日の献立(主菜・主食・副菜・汁物を各1品、計4品)を${S.settings.people}人分で考えてください。
+- 主食はご飯・パン・麺類など。在庫になければ常備の米で白ごはんや混ぜご飯にしてよい。丼・パスタ・うどんのように主菜と主食を兼ねる料理は role を主菜にし、主食は省いてよい。
+- uses には、その料理で使う在庫の食材をすべて漏れなく入れる。id は在庫の id をそのまま写す。
 - days_left が小さい食材(特に ${S.settings.remindDays} 以下)を最優先で使い切る。期限まで余裕のある冷凍品・常温品は急がない。
 - 塩・砂糖・醤油・味噌・酒・みりん・酢・油・だし・こしょう・片栗粉・小麦粉・米は常備していると仮定してよい。それ以外で在庫にないものはできるだけ使わない。
 - 家庭で無理なく作れる手順(各6ステップ以内)。肉・魚は中心まで十分に加熱する。
 ${S.wish?'- 希望: '+S.wish+'\n':''}${prev.length?'- 前回の提案('+prev.join('、')+')とは別の料理にする。\n':''}
 次の形のJSONだけを返す:
-{"comment":"献立のひとこと(20字以内)","dishes":[{"role":"主菜|副菜|汁物","name":"料理名","desc":"一文の説明","minutes":調理分数,"uses":[{"id":"在庫のid","name":"食材名","qty":使う量(在庫と同じ単位の数値),"unit":"単位"}],"others":["在庫以外に使う材料と分量"],"steps":["手順"],"search":"クックパッド検索用に主な食材を2つ、空白区切り"}]}
+{"comment":"献立のひとこと(20字以内)","dishes":[{"role":"主菜|主食|副菜|汁物","name":"料理名","desc":"一文の説明","minutes":調理分数,"uses":[{"id":"在庫のid","name":"食材名","qty":使う量(在庫と同じ単位の数値),"unit":"単位"}],"others":["在庫以外に使う材料と分量"],"steps":["手順"],"search":"クックパッド検索用に主な食材を2つ、空白区切り"}]}
 在庫: ${JSON.stringify(inv)}`}],0.8);
     if(!out.dishes||!out.dishes.length)throw new Error('献立を作れませんでした。もう一度お試しください');
     S.menu={date:today(),comment:out.comment||'',dishes:out.dishes};save();
@@ -556,9 +568,14 @@ document.addEventListener('click',async e=>{
   case'people':S.settings.people=+b.dataset.v;save();keepWish();render();break;
   case'genMenu':keepWish();genMenu(false);break;
   case'cooked':cookedSheet(+b.dataset.i);break;
-  case'ckSave':{snap();let n=0;document.querySelectorAll('#sheet .rv').forEach(r=>{if(!r.querySelector('[data-ck=on]').checked)return;
-      const all=r.querySelector('[data-ck=all]').checked,q=parseFloat(r.querySelector('[data-ck=qty]').value);consume(r.dataset.id,all?null:(q>0?q:0));n++});
-    const d=S.menu&&S.menu.dishes[cookIdx];if(d)S.log.unshift({id:uid(),date:today(),name:d.name,role:d.role||'',desc:d.desc||'',uses:(d.uses||[]).map(u=>u.name+(u.qty?' '+fq(u.qty)+(u.unit||''):'')),others:d.others||[],steps:d.steps||[],search:d.search||d.name,note:''});
+  case'ckMore':document.getElementById('ckPick').hidden=false;b.hidden=true;break;
+  case'ckAdd':{if(!it)break;const st=stepOf(it.unit);document.getElementById('ckRows').insertAdjacentHTML('beforeend',ckRow(it,Math.min(it.qty,it.unit==='g'||it.unit==='ml'?st*2:1)));
+    b.remove();const nn=document.getElementById('ckNone');if(nn)nn.remove();break}
+  case'ckSave':{snap();let n=0;const used=[];document.querySelectorAll('#sheet .rv').forEach(r=>{if(!r.querySelector('[data-ck=on]').checked)return;
+      const x=S.items.find(y=>y.id===r.dataset.id);if(!x)return;
+      const all=r.querySelector('[data-ck=all]').checked,q=parseFloat(r.querySelector('[data-ck=qty]').value),amt=all?x.qty:Math.min(x.qty,q>0?q:0);
+      if(!(amt>0))return;used.push(x.name+' '+fq(amt)+x.unit);consume(x.id,all?null:amt);n++});
+    const d=S.menu&&S.menu.dishes[cookIdx];if(d)S.log.unshift({id:uid(),date:today(),name:d.name,role:d.role||'',desc:d.desc||'',uses:used.length?used:(d.uses||[]).map(u=>u.name+(u.qty?' '+fq(u.qty)+(u.unit||''):'')),others:d.others||[],steps:d.steps||[],search:d.search||d.name,note:''});
     save();closeSheet();render();toast('記録しました（在庫から '+n+' 品）',true);break}
   case'ics':{const r=buildIcs();if(!r.count){toast('登録できる食材がありません');break}await giveFile('shokuzai-reminder.ics',r.text,'text/calendar');break}
   case'testKey':readSettings();b.disabled=true;b.textContent='確認中…';try{await gemini([{text:'{"ok":true} というJSONだけを返してください'}],0);toast('接続できました')}catch(er){toast(er.message)}render();break;
