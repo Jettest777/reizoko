@@ -150,6 +150,8 @@ details summary{font-weight:600;font-size:14.5px;padding:8px 0;cursor:pointer;co
 .day{display:flex;align-items:center;gap:10px;font:600 14px var(--mincho);letter-spacing:.14em;color:var(--g8);margin:24px 2px 10px}
 .day::after{content:"";flex:1;height:1px;background:var(--g3)}
 .done{flex:1;text-align:center;font-weight:600;color:var(--g7);background:var(--g1);border-radius:12px;padding:14px;letter-spacing:.08em}
+.qbox{position:relative;margin-bottom:12px}.qbox input{padding-right:46px}.qbox button{position:absolute;right:4px;top:3px;width:40px;height:40px;font-size:20px;color:var(--sub)}
+.uses span.hit{background:var(--g7);color:#fff;font-weight:600}
 .cal2{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 10px 10px}
 .cal2 .hdr{display:flex;align-items:center;justify-content:space-between;font:600 16px var(--mincho);letter-spacing:.12em;margin-bottom:4px}
 .cal2 .hdr button{width:44px;height:40px;font-size:22px;color:var(--g7)}
@@ -425,7 +427,7 @@ function vMenu(){
   return `<div class="card" style="margin-bottom:14px"><div class="seg">${MEALS.map(k=>`<button data-act="meal" data-v="${k}" class="${meal===k?'on':''}">${MEAL[k].t}</button>`).join('')}</div>
   <div class="row" style="margin-top:10px"><span style="flex:none;font-weight:600;font-size:14px;letter-spacing:.08em">人数</span>
   <div class="seg" style="flex:1">${[1,2,3,4].map(n=>`<button data-act="people" data-v="${n}" class="${S.settings.people===n?'on':''}">${n}人</button>`).join('')}</div></div>
-  <input type="text" id="wish" style="margin-top:10px" placeholder="リクエスト（例: 15分で、和食、子ども向け）" value="${esc(S.wish||'')}"></div>${body}`}
+  <input type="text" id="wish" style="margin-top:10px" placeholder="リクエスト（例: 15分で、和食、子ども向け）" value="${esc(wishNow())}"></div>${body}`}
 function dishCard(d,i){
   const uses=(d.uses||[]).map(u=>{const it=findInv(u);const hot=it&&status(it).k!=='ok';
     return `<span class="${hot?'hot':''}">${esc(u.name)} ${u.qty?fq(u.qty):''}${esc(u.unit||'')}</span>`}).join('');
@@ -442,13 +444,26 @@ function normLeft(r){if(typeof r.left==='string'){const m=r.left.match(/(\d+)%�
     r.left=m?{pct:+m[1],loc:LOCNAME[m[2]],itemId:(S.items.find(i=>i.cat==='作りおき'&&i.name===r.name)||{}).id||null}:null}
   return r.left||null}
 function recHtml(r){const lf=normLeft(r);
-  return `<details class="rec" data-id="${r.id}" ${openRecs.has(r.id)?'open':''}><summary><span class="stamp">${esc(r.role||'一品')}</span><b>${esc(r.name)}</b>${r.note?'<span class="hasnote">感想あり</span>':''}</summary><div class="recbody">
-  ${r.desc?`<p>${esc(r.desc)}</p>`:''}${r.uses.length?`<div class="uses">${r.uses.map(u=>`<span>${esc(u)}</span>`).join('')}</div>`:''}
+  return `<details class="rec" data-id="${r.id}" ${openRecs.has(r.id)||logQ?'open':''}><summary><span class="stamp">${esc(r.role||'一品')}</span><b>${esc(r.name)}</b>${r.note?'<span class="hasnote">感想あり</span>':''}</summary><div class="recbody">
+  ${r.desc?`<p>${esc(r.desc)}</p>`:''}${r.uses.length?`<div class="uses">${r.uses.map(u=>`<span class="${logQ&&qWords().some(w=>norm(u).includes(w))?'hit':''}">${esc(u)}</span>`).join('')}</div>`:''}
   ${r.steps.length?`<details><summary>作り方を見る</summary>${r.others.length?`<p>そのほか: ${esc(r.others.join('、'))}</p>`:''}<ol>${r.steps.map(s=>`<li>${esc(s)}</li>`).join('')}</ol></details>`:''}
   <div class="leftrow"><span>残した量: <b>${lf?lf.pct+'%（'+LOC[lf.loc].t+'保存）':'なし'}</b></span><button data-act="leftEdit" data-id="${r.id}">変更</button></div>
   <label class="f" style="margin-top:6px">感想</label><textarea rows="3" maxlength="140" data-note="${r.id}" placeholder="味、家族の反応、次に変えたいところなど">${esc(r.note||'')}</textarea><div class="cnt140">${(r.note||'').length} / 140</div>
   <div class="acts"><a target="_blank" rel="noopener" href="${cookpad(r.search||r.name)}">クックパッドで探す</a><button data-act="logDel" data-id="${r.id}">削除</button></div></div></details>`}
-function vLog(){
+let logQ='';
+const qWords=()=>logQ.split(/[\s　]+/).map(norm).filter(Boolean);
+function logSearch(){const ws=qWords();
+  const hits=S.log.filter(r=>{const t=norm([r.name,r.desc||'',...(r.uses||[]),...(r.others||[])].join(' '));return ws.every(w=>t.includes(w))}).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0);
+  if(!hits.length)return `<div class="oshina" style="margin-top:14px"><div class="pot"><span class="p">🍽️</span><div>「${esc(logQ)}」に合う記録は見つかりませんでした。<br>料理名か食材名で探せます。</div></div></div>`;
+  const by={};for(const r of hits)(by[r.date]=by[r.date]||[]).push(r);
+  return `<p class="hint" style="margin:12px 4px 0;font-size:13px">「${esc(logQ)}」の記録: <b>${hits.length}件</b>（新しい順）</p>`+Object.keys(by).sort().reverse().map(ds=>{const d=parse(ds);
+    return `<section class="daycard"><div class="day">${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${WD[d.getDay()]}）</div>
+    ${MEALS.map(k=>{const rs=by[ds].filter(r=>(r.meal||'pm')===k);return rs.length?`<div class="mealrow"><span class="ml">${MEAL[k].s}</span><div class="mlist">${rs.map(recHtml).join('')}</div></div>`:''}).join('')}</section>`}).join('')}
+function vLog(){return `<h1>記録</h1>
+  <div class="qbox"><input type="text" id="logQ" value="${esc(logQ)}" placeholder="料理名・食材名で探す（例: キャベツ）" autocomplete="off" enterkeyhint="search"><button data-act="logQClear" id="logQX" aria-label="検索を消す" ${logQ?'':'hidden'}>×</button></div>
+  <div id="logBody">${logBody()}</div>
+  <div style="height:14px"></div><button class="btn line" data-act="logAdd">記録を追加する</button>`}
+function logBody(){if(logQ)return logSearch();
   const [y,mo]=logMonth.split('-').map(Number),first=new Date(y,mo-1,1),n=new Date(y,mo,0).getDate(),by={};
   for(const r of S.log)(by[r.date]=by[r.date]||[]).push(r);
   let cells=WD.split('').map(w=>`<div class="wd">${w}</div>`).join('')+'<div></div>'.repeat(first.getDay());
@@ -458,11 +473,9 @@ function vLog(){
   const cards=days.map(ds=>{const d=parse(ds);
     return `<section class="daycard${ds===logSel?' sel':''}" id="d-${ds}"><div class="day">${d.getMonth()+1}月${d.getDate()}日（${WD[d.getDay()]}）</div>
     ${MEALS.map(k=>{const rs=by[ds].filter(r=>(r.meal||'pm')===k);return rs.length?`<div class="mealrow"><span class="ml">${MEAL[k].s}</span><div class="mlist">${rs.map(recHtml).join('')}</div></div>`:''}).join('')}</section>`}).join('');
-  return `<h1>記録</h1>
-  <div class="cal2"><div class="hdr"><button data-act="calMove" data-d="-1" aria-label="前の月">‹</button><span>${y}年${mo}月</span><button data-act="calMove" data-d="1" aria-label="次の月">›</button></div><div class="grid">${cells}</div>
+  return `<div class="cal2"><div class="hdr"><button data-act="calMove" data-d="-1" aria-label="前の月">‹</button><span>${y}年${mo}月</span><button data-act="calMove" data-d="1" aria-label="次の月">›</button></div><div class="grid">${cells}</div>
   <p class="hint" style="text-align:center;margin-top:8px">印のある日をタップすると、その日の記録に移動します。</p></div>
-  ${cards||`<div class="oshina" style="margin-top:14px"><div class="pot"><span class="p">🍽️</span><div>${S.log.length?'この月の記録はありません。':'作った料理がここに残ります。<br>献立で「作った」を押すと自動で記録されます。'}</div></div></div>`}
-  <div style="height:14px"></div><button class="btn line" data-act="logAdd">記録を追加する</button>`}
+  ${cards||`<div class="oshina" style="margin-top:14px"><div class="pot"><span class="p">🍽️</span><div>${S.log.length?'この月の記録はありません。':'作った料理がここに残ります。<br>献立で「作った」を押すと自動で記録されます。'}</div></div></div>`}`}
 function leftSheet(r){const lf=normLeft(r),it=lf&&lf.itemId&&S.items.find(i=>i.id===lf.itemId);
   if(!leftEd||leftEd.id!==r.id)leftEd={id:r.id,pct:lf?lf.pct:50,loc:lf?lf.loc:'fridge'};
   const k={...KEEP_DEF,...(r.keep||{})},n=shelfDays(r.name,leftEd.loc,'作りおき',k);
@@ -584,7 +597,7 @@ async function genMenu(silent){
 - days_left が小さい食材(特に ${S.settings.remindDays} 以下)を最優先で使い切る。期限まで余裕のある冷凍品・常温品は急がない。
 - 塩・砂糖・醤油・味噌・酒・みりん・酢・油・だし・こしょう・片栗粉・小麦粉・米は常備していると仮定してよい。それ以外で在庫にないものはできるだけ使わない。
 - 家庭で無理なく作れる手順(各6ステップ以内)。肉・魚は中心まで十分に加熱する。
-${S.wish?'- 希望: '+S.wish+'\n':''}${prev.length?'- 今日すでに出た料理('+prev.join('、')+')とは別の料理にする。\n':''}
+${wishNow()?'- 希望: '+wishNow()+'\n':''}${prev.length?'- 今日すでに出た料理('+prev.join('、')+')とは別の料理にする。\n':''}
 次の形のJSONだけを返す:
 {"comment":"献立のひとこと(20字以内)","dishes":[{"role":"主菜|主食|副菜|汁物","name":"料理名","desc":"一文の説明","minutes":調理分数,"uses":[{"id":"在庫のid","name":"食材名","qty":使う量(在庫と同じ単位の数値),"unit":"単位"}],"others":["在庫以外に使う材料と分量"],"steps":["手順"],"keep":{"fridge":冷蔵での日数,"freezer":冷凍での日数,"pantry":常温での日数},"search":"クックパッド検索用に主な食材を2つ、空白区切り"}]}
 在庫: ${JSON.stringify(inv)}`}],0.8);
@@ -688,6 +701,7 @@ document.addEventListener('click',async e=>{
     const r={id:uid(),date:g('lDate').value||today(),meal:lMealSel,name,role:'',desc:'',uses:[],others:[],steps:[],search:name,note:g('lNote').value.slice(0,140),keep:null,left:null};
     S.log.push(r);logMonth=r.date.slice(0,7);logSel=r.date;openRecs.add(r.id);save();closeSheet();render();toast('記録しました');break}
   case'logDel':{const r=S.log.find(x=>x.id===id);if(!r)break;snap();S.log=S.log.filter(x=>x.id!==id);save();render();toast('「'+r.name+'」の記録を削除しました',true);break}
+  case'logQClear':logQ='';render();break;
   case'calMove':{const [y,m]=logMonth.split('-').map(Number),d=new Date(y,m-1+(+b.dataset.d),1);logMonth=d.getFullYear()+'-'+pad(d.getMonth()+1);logSel=null;render();break}
   case'calDay':{logSel=b.dataset.v;render();const el=document.getElementById('d-'+logSel);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});break}
   case'leftEdit':{const r=S.log.find(x=>x.id===id);if(r){leftEd=null;leftSheet(r)}break}
@@ -702,11 +716,14 @@ document.addEventListener('click',async e=>{
     else{const iid=uid();S.items.push({id:iid,name:r.name,cat:'作りおき',loc,qty:pct,unit:'%',bought:today(),exp:addDays(today(),days),est:true,keep:k});S.fold[loc]=false;r.left={pct,loc,itemId:iid};msg='残りを'+LOC[loc].room+'に入れました'}
     leftEd=null;save();closeSheet();render();toast(msg,true);break}
   }});
-function keepWish(){const w=document.getElementById('wish');if(w)S.wish=w.value.trim()}
+function keepWish(){const w=document.getElementById('wish');if(w){S.wish=w.value.trim();S.wishKey=today()+meal}}
+function wishNow(){if(S.wish&&S.wishKey!==today()+meal){S.wish='';S.wishKey='';save()}return S.wish||''}
+let slot=today()+mealNow();function slotCheck(){const s=today()+mealNow();if(s!==slot){slot=s;meal=mealNow();menuErr=''}}
 function readSettings(){const g=id=>document.getElementById(id);if(!g('sKey'))return;const s=S.settings;
   s.apiKey=g('sKey').value.trim();s.model=g('sModel').value.trim()||DEF.settings.model;s.autoMenu=g('sAuto').checked;s.remindDays=+g('sDays').value;s.remindHour=+g('sHour').value;save()}
 document.addEventListener('input',e=>{const t=e.target;
-  if(t.id==='lfPct'){left.pct=+t.value;document.getElementById('lfOut').textContent=left.pct+'%'}
+  if(t.id==='logQ'){logQ=t.value.trim();document.getElementById('logBody').innerHTML=logBody();document.getElementById('logQX').hidden=!logQ}
+  else if(t.id==='lfPct'){left.pct=+t.value;document.getElementById('lfOut').textContent=left.pct+'%'}
   else if(t.id==='lePct'){leftEd.pct=+t.value;document.getElementById('leOut').textContent=leftEd.pct?leftEd.pct+'%':'なし'}
   else if(t.id==='fName'){form.name=t.value.trim();autoFill()}
   else if(t.id==='fExp'){form.exp=t.value;form.touched=true;form.est=false;form.note='';syncForm();autoFill()}
@@ -727,7 +744,7 @@ document.addEventListener('change',e=>{const t=e.target;
   if(t.id==='wish')keepWish();
 });
 document.addEventListener('toggle',e=>{const t=e.target;if(t.matches&&t.matches('details.rec')){t.open?openRecs.add(t.dataset.id):openRecs.delete(t.dataset.id)}},true);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!document.body.classList.contains('open')&&view!=='add'&&view!=='settings'&&view!=='log'){render();autoMenu()}});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!document.body.classList.contains('open')&&view!=='add'&&view!=='settings'&&view!=='log'){slotCheck();render();autoMenu()}});
 function autoMenu(){const s=S.settings,mk=mealNow();if(view!=='menu')meal=mk;if(meal!==mk)return;const m=menus()[mk];if(s.apiKey&&s.autoMenu&&S.items.length&&!(m&&m.dishes.length)&&S.menuTried!==today()+mk)genMenu(true)}
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
 document.querySelectorAll('[data-ic]').forEach(e=>e.innerHTML=IC[e.dataset.ic]);
